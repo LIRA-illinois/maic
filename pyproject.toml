@@ -1,0 +1,24 @@
+[project]
+name = "maic"
+version = "0.1.0"
+description = ""
+readme = "README.md"
+authors = [
+    { name = "Jacob", email = "jheglun2@illinois.edu" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "sacred==0.8.2",
+    "matplotlib==3.10.6",
+    "numpy==2.3.2",
+    "pyyaml==6.0.2",
+    "ipdb",
+    "tensorboard-logger",
+    "tensorboard==2.20.0",
+    "tensorboardx==2.4.1",
+    "torch==2.6.0",
+]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
