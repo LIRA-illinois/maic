@@ -1,12 +1,11 @@
 # From https://github.com/wjh720/QPLEX/, added here for convenience.
 import copy
-from components.episode_buffer import EpisodeBatch
-from modules.mixers.dmaq_general import DMAQer
-from modules.mixers.dmaq_qatten import DMAQ_QattenMixer
-import torch.nn.functional as F
 import torch as th
 from torch.optim import RMSprop
-import numpy as np
+
+from maic.components.episode_buffer import EpisodeBatch
+from maic.modules.mixers.dmaq_general import DMAQer
+from maic.modules.mixers.dmaq_qatten import DMAQ_QattenMixer
 
 
 class MAICQPLEXLearner:
@@ -36,7 +35,7 @@ class MAICQPLEXLearner:
         self.target_mac = copy.deepcopy(mac)
 
         self.log_stats_t = -self.args.learner_log_interval - 1
-        
+
         self.n_actions = self.args.n_actions
 
     def sub_train(self, batch: EpisodeBatch, t_env: int, episode_num: int, mac, mixer, optimiser, params,
@@ -60,7 +59,7 @@ class MAICQPLEXLearner:
         mac_out = []
         mac.init_hidden(batch.batch_size)
         for t in range(batch.max_seq_length):
-            agent_outs, returns_ = self.mac.forward(batch, t=t, 
+            agent_outs, returns_ = self.mac.forward(batch, t=t,
                 prepare_for_logging=prepare_for_logging,
                 train_mode=True,
                 mixer=self.target_mixer,
@@ -168,7 +167,7 @@ class MAICQPLEXLearner:
 
         masked_hit_prob = th.mean(is_max_action, dim=2) * mask
         hit_prob = masked_hit_prob.sum() / mask.sum()
-        
+
         external_loss, loss_dict = self._process_loss(losses, batch)
         loss += external_loss
 

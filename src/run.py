@@ -1,24 +1,23 @@
 import datetime
 import os
+from os.path import dirname, abspath
 import pprint
 import time
 import threading
 import torch as th
 import json
 from types import SimpleNamespace as SN
-from utils.logging import Logger
-from utils.timehelper import time_left, time_str
-from os.path import dirname, abspath
-
-from learners import REGISTRY as le_REGISTRY
-from runners import REGISTRY as r_REGISTRY
-from controllers import REGISTRY as mac_REGISTRY
-from components.episode_buffer import ReplayBuffer
-from components.transforms import OneHot
-
-import numpy as np
 import copy as cp
 import random
+
+from maic.utils.logging import Logger
+from maic.utils.timehelper import time_left, time_str
+from maic.learners import REGISTRY as le_REGISTRY
+from maic.runners import REGISTRY as r_REGISTRY
+from maic.controllers import REGISTRY as mac_REGISTRY
+from maic.components.episode_buffer import ReplayBuffer
+from maic.components.transforms import OneHot
+
 
 def run(_run, _config, _log):
 
@@ -46,9 +45,9 @@ def run(_run, _config, _log):
         unique_token = "{}_{}_{}_{}".format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), alg_name, args.env, args.env_args['map_name'])
     else:
         unique_token = "{}_{}_{}".format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), alg_name, args.env)
-    
+
     args.unique_token = unique_token
-    
+
     if str(args.env).startswith('sc2'):
         tb_logs_direc = os.path.join(dirname(dirname(abspath(__file__))), "results", "tb_logs", args.env, args.env_args['map_name'], alg_name)
     else:

@@ -6,7 +6,60 @@ This is the implementation of the paper "Multi-Agent Incentive Communication via
 
 Note: the experiments of MAIC is conducted in SC2.4.6.2.69232, which is same as the SMAC run data release (https://github.com/oxwhirl/smac/releases/tag/v1). The results are not always comparable with results run in SC2.4.10.
 
+
+
+
 ## Installation instructions
+This project assumes the use of Ubuntu 22.04 as the operating system. Some commands below may not work on other operating systems or may require significant modification.
+
+1. Install the following software on your computer
+    - VS Code (the IDE for this project)
+        - [Installation instructions](https://code.visualstudio.com/docs/setup/setup-overview)
+    - Any version of Python and pip
+    - Git (for project code version control)
+        - [Installation instructions](https://git-scm.com/downloads)
+
+1. `cd` to the project root and install the project's dependencies
+    - `pip install poetry`
+    - `poetry config --local virtualenvs.in-project true`
+        - Makes the virtual environment install in this project's root instead of some random location on your computer.
+    - `poetry lock`
+        - NOTE: If you do not have the right version of Python on your computer, this step will fail and you will need to install it using, for example, the deadsnakes repo.
+    - `poetry install`
+    - `source .venv/bin/activate`
+        - Activates the venv
+    - `pip install -e qplex_smac`
+        - Install `qplex_smac` in editable mode
+
+
+## Run an experiment
+
+```shell
+python3 src/main.py --config=[Algorithm name] --env-config=[Env name] with env_args.map_name=[Map name if choosing SC2 env]
+```
+
+The config files act as defaults for an algorithm or environment.
+
+They are all located in `src/config`.
+`--config` refers to the config files in `src/config/algs` includeing MAIC and other baselines.
+`--env-config` refers to the config files in `src/config/envs` including `sc2`, `foraging` as the LB-Foraging environment (https://github.com/semitable/lb-foraging), `join1` as the hallway environment (https://github.com/TonghanWang/NDQ).
+
+All results will be stored in the `results` folder.
+
+For example, run MAIC with QMIX mixing network (default SC2 evaluation in the paper) :
+
+```
+python src/main.py --config=maic --env-config=sc2 with env_args.map_name=MMM2 seed=42
+```
+
+Run MAIC with QPLEX mixing network:
+
+```
+python src/main.py --config=maic_qplex --env-config=sc2 with env_args.map_name=MMM2 seed=42
+```
+
+
+## Installation instructions (old)
 
 Set up StarCraft II and SMAC:
 
@@ -41,31 +94,6 @@ pip install -r requirements.txt
 pip install qplex_smac/
 ```
 
-As MAIC contains implementation with QPLEX mixing network (https://github.com/wjh720/QPLEX), please install the QPLEX version of SMAC in `qplex_smac` folder. You can also run algorithms without QPLEX mixing network integration with default SMAC installed (https://github.com/oxwhirl/smac). 
+As MAIC contains implementation with QPLEX mixing network (https://github.com/wjh720/QPLEX), please install the QPLEX version of SMAC in `qplex_smac` folder. You can also run algorithms without QPLEX mixing network integration with default SMAC installed (https://github.com/oxwhirl/smac).
 
 
-## Run an experiment 
-
-```shell
-python3 src/main.py --config=[Algorithm name] --env-config=[Env name] with env_args.map_name=[Map name if choosing SC2 env]
-```
-
-The config files act as defaults for an algorithm or environment. 
-
-They are all located in `src/config`.
-`--config` refers to the config files in `src/config/algs` includeing MAIC and other baselines.
-`--env-config` refers to the config files in `src/config/envs` including `sc2`, `foraging` as the LB-Foraging environment (https://github.com/semitable/lb-foraging), `join1` as the hallway environment (https://github.com/TonghanWang/NDQ).
-
-All results will be stored in the `results` folder.
-
-For example, run MAIC with QMIX mixing network (default SC2 evaluation in the paper) :
-
-```
-python src/main.py --config=maic --env-config=sc2 with env_args.map_name=MMM2 seed=42
-```
-
-Run MAIC with QPLEX mixing network:
-
-```
-python src/main.py --config=maic_qplex --env-config=sc2 with env_args.map_name=MMM2 seed=42
-```

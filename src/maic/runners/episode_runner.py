@@ -1,7 +1,8 @@
-from envs import REGISTRY as env_REGISTRY
 from functools import partial
-from components.episode_buffer import EpisodeBatch
 import numpy as np
+
+from maic.envs import REGISTRY as env_REGISTRY
+from maic.components.episode_buffer import EpisodeBatch
 
 
 class EpisodeRunner:
@@ -101,7 +102,7 @@ class EpisodeRunner:
             self.t_env += self.t
 
         cur_returns.append(episode_return)
-                
+
         if test_mode and (len(self.test_returns) == self.args.test_nepisode):
             self._log(cur_returns, cur_stats, log_prefix)
         elif self.t_env - self.log_train_stats_t >= self.args.runner_log_interval:

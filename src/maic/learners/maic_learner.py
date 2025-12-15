@@ -1,13 +1,12 @@
 import copy
-from components.episode_buffer import EpisodeBatch
-from modules.mixers.vdn import VDNMixer
-from modules.mixers.qmix import QMixer
 import torch as th
 from torch.optim import RMSprop
 
-import numpy as np
+from maic.components.episode_buffer import EpisodeBatch
+from maic.modules.mixers.vdn import VDNMixer
+from maic.modules.mixers.qmix import QMixer
 
-class QLearner:
+class MAICLearner:
     def __init__(self, mac, scheme, logger, args):
         self.args = args
         self.mac = mac
@@ -35,7 +34,7 @@ class QLearner:
 
         self.log_stats_t = -self.args.learner_log_interval - 1
 
-    def train(self, batch: EpisodeBatch, t_env: int, episode_num: int, show_demo=False, save_data=None):
+    def train(self, batch: EpisodeBatch, t_env: int, episode_num: int):
         # Get the relevant quantities
         rewards = batch["reward"][:, :-1]
         actions = batch["actions"][:, :-1]
@@ -44,37 +43,45 @@ class QLearner:
         mask[:, 1:] = mask[:, 1:] * (1 - terminated[:, :-1])
         avail_actions = batch["avail_actions"]
 
+        # NOTE: record logging signal
+        prepare_for_logging = True if t_env - self.log_stats_t >= self.args.learner_log_interval else False
+
+        logs = []
+        losses = []
+
         # Calculate estimated Q-Values
         mac_out = []
         self.mac.init_hidden(batch.batch_size)
+
         for t in range(batch.max_seq_length):
-            agent_outs = self.mac.forward(batch, t=t)
+            agent_outs, returns_ = self.mac.forward(batch, t=t,
+                prepare_for_logging=prepare_for_logging,
+                train_mode=True,
+                mixer=self.target_mixer,
+            )
             mac_out.append(agent_outs)
+            if prepare_for_logging and 'logs' in returns_:
+                logs.append(returns_['logs'])
+                del returns_['logs']
+            losses.append(returns_)
+
         mac_out = th.stack(mac_out, dim=1)  # Concat over time
 
         # Pick the Q-Values for the actions taken by each agent
         chosen_action_qvals = th.gather(mac_out[:, :-1], dim=3, index=actions).squeeze(3)  # Remove the last dim
 
-        x_mac_out = mac_out.clone().detach()
-        x_mac_out[avail_actions == 0] = -9999999
-        max_action_qvals, max_action_index = x_mac_out[:, :-1].max(dim=3)
-
-        max_action_index = max_action_index.detach().unsqueeze(3)
-        is_max_action = (max_action_index == actions).int().float()
-
-        if show_demo:
-            q_i_data = chosen_action_qvals.detach().cpu().numpy()
-            q_data = (max_action_qvals - chosen_action_qvals).detach().cpu().numpy()
-
         # Calculate the Q-Values necessary for the target
         target_mac_out = []
         self.target_mac.init_hidden(batch.batch_size)
         for t in range(batch.max_seq_length):
-            target_agent_outs = self.target_mac.forward(batch, t=t)
+            target_agent_outs, _ = self.target_mac.forward(batch, t=t)
             target_mac_out.append(target_agent_outs)
 
         # We don't need the first timesteps Q-Value estimate for calculating targets
         target_mac_out = th.stack(target_mac_out[1:], dim=1)  # Concat across time
+
+        # Mask out unavailable actions
+        target_mac_out[avail_actions[:, 1:] == 0] = -9999999
 
         # Max over target Q-Values
         if self.args.double_q:
@@ -94,19 +101,6 @@ class QLearner:
         # Calculate 1-step Q-Learning targets
         targets = rewards + self.args.gamma * (1 - terminated) * target_max_qvals
 
-        if show_demo:
-            tot_q_data = chosen_action_qvals.detach().cpu().numpy()
-            tot_target = targets.detach().cpu().numpy()
-            if self.mixer == None:
-                tot_q_data = np.mean(tot_q_data, axis=2)
-                tot_target = np.mean(tot_target, axis=2)
-
-            print('action_pair_%d_%d' % (save_data[0], save_data[1]), np.squeeze(q_data[:, 0]),
-                  np.squeeze(q_i_data[:, 0]), np.squeeze(tot_q_data[:, 0]), np.squeeze(tot_target[:, 0]))
-            self.logger.log_stat('action_pair_%d_%d' % (save_data[0], save_data[1]),
-                                 np.squeeze(tot_q_data[:, 0]), t_env)
-            return
-
         # Td-error
         td_error = (chosen_action_qvals - targets.detach())
 
@@ -118,8 +112,8 @@ class QLearner:
         # Normal L2 loss, take mean over actual data
         loss = (masked_td_error ** 2).sum() / mask.sum()
 
-        masked_hit_prob = th.mean(is_max_action, dim=2) * mask
-        hit_prob = masked_hit_prob.sum() / mask.sum()
+        external_loss, loss_dict = self._process_loss(losses, batch)
+        loss += external_loss
 
         # Optimise
         self.optimiser.zero_grad()
@@ -133,13 +127,32 @@ class QLearner:
 
         if t_env - self.log_stats_t >= self.args.learner_log_interval:
             self.logger.log_stat("loss", loss.item(), t_env)
-            self.logger.log_stat("hit_prob", hit_prob.item(), t_env)
             self.logger.log_stat("grad_norm", grad_norm, t_env)
             mask_elems = mask.sum().item()
             self.logger.log_stat("td_error_abs", (masked_td_error.abs().sum().item()/mask_elems), t_env)
             self.logger.log_stat("q_taken_mean", (chosen_action_qvals * mask).sum().item()/(mask_elems * self.args.n_agents), t_env)
             self.logger.log_stat("target_mean", (targets * mask).sum().item()/(mask_elems * self.args.n_agents), t_env)
+
+            self._log_for_loss(loss_dict, t_env)
+
             self.log_stats_t = t_env
+
+    def _process_loss(self, losses: list, batch: EpisodeBatch):
+        total_loss = 0
+        loss_dict = {}
+        for item in losses:
+            for k, v in item.items():
+                if str(k).endswith('loss'):
+                    loss_dict[k] = loss_dict.get(k, 0) + v
+                    total_loss += v
+        for k in loss_dict.keys():
+            loss_dict[k] /= batch.max_seq_length
+        total_loss /= batch.max_seq_length
+        return total_loss, loss_dict
+
+    def _log_for_loss(self, losses: dict, t):
+        for k, v in losses.items():
+            self.logger.log_stat(k, v.item(), t)
 
     def _update_targets(self):
         self.target_mac.load_state(self.mac)

@@ -1,19 +1,21 @@
 import numpy as np
 import os
-import collections
 from os.path import dirname, abspath
+import sys
+import collections
 from copy import deepcopy
 from sacred import Experiment, SETTINGS
 from sacred.observers import FileStorageObserver
 from sacred.utils import apply_backspaces_and_linefeeds
-import sys
 import torch as th
-from utils.logging import get_logger
 import yaml
 
 from run import run
+from maic.utils.logging import get_logger
 
-SETTINGS['CAPTURE_MODE'] = "fd" # set to "no" if you want to see stdout/stderr in console
+SETTINGS["CAPTURE_MODE"] = (
+    "fd"  # set to "no" if you want to see stdout/stderr in console
+)
 logger = get_logger()
 
 ex = Experiment("pymarl")
@@ -29,14 +31,14 @@ def my_main(_run, _config, _log):
     config = config_copy(_config)
     np.random.seed(config["seed"])
     th.manual_seed(config["seed"])
-    config['env_args']['seed'] = config["seed"]
+    config["env_args"]["seed"] = config["seed"]
 
     # run the framework
     run(_run, config, _log)
 
 
 def _get_comment(params, arg_name):
-    comment = ''
+    comment = ""
     for _i, _v in enumerate(params):
         if _v.split("=")[0] == arg_name:
             comment = _v.split("=")[1]
@@ -54,7 +56,16 @@ def _get_config(params, arg_name, subfolder):
             break
 
     if config_name is not None:
-        with open(os.path.join(os.path.dirname(__file__), "config", subfolder, "{}.yaml".format(config_name)), "r") as f:
+        with open(
+            os.path.join(
+                os.path.dirname(__file__),
+                "maic",
+                "config",
+                subfolder,
+                "{}.yaml".format(config_name),
+            ),
+            "r",
+        ) as f:
             try:
                 config_dict = yaml.load(f, Loader=yaml.CLoader)
             except yaml.YAMLError as exc:
@@ -80,24 +91,25 @@ def config_copy(config):
         return deepcopy(config)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     params = deepcopy(sys.argv)
 
     # Get the defaults from default.yaml
-    with open(os.path.join(os.path.dirname(__file__), "config", "default.yaml"), "r") as f:
+    __import__('ipdb').set_trace(context=3)
+    with open(os.path.join(os.path.dirname(__file__), "maic", "config", "default.yaml"), "r") as f:
         try:
             config_dict = yaml.load(f, Loader=yaml.CLoader)
         except yaml.YAMLError as exc:
             assert False, "default.yaml error: {}".format(exc)
 
     # Load algorithm and env base configs
-    comment = _get_comment(params, '--comment')
+    comment = _get_comment(params, "--comment")
     env_config = _get_config(params, "--env-config", "envs")
     alg_config = _get_config(params, "--config", "algs")
     # config_dict = {**config_dict, **env_config, **alg_config}
     config_dict = recursive_dict_update(config_dict, env_config)
     config_dict = recursive_dict_update(config_dict, alg_config)
-    config_dict['comment'] = comment
+    config_dict["comment"] = comment
 
     # now add all the config to sacred
     ex.add_config(config_dict)
@@ -108,4 +120,3 @@ if __name__ == '__main__':
     ex.observers.append(FileStorageObserver.create(file_obs_path))
 
     ex.run_commandline(params)
-

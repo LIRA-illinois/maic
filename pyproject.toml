@@ -8,14 +8,14 @@ authors = [
 ]
 requires-python = ">=3.11"
 dependencies = [
-    "sacred==0.8.2",
+    "gymnasium>=0.28",
+    "ipdb",
     "matplotlib==3.10.6",
     "numpy==2.3.2",
     "pyyaml==6.0.2",
-    "ipdb",
-    "tensorboard-logger",
+    "sacred==0.8.2",
     "tensorboard==2.20.0",
-    "tensorboardx==2.4.1",
+    "tensorboard-logger",
     "torch==2.6.0",
 ]
 

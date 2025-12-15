@@ -1,8 +1,6 @@
 from collections import defaultdict
 import logging
-import numpy as np
-from tensorboardX.writer import SummaryWriter
-
+from torch.utils.tensorboard import SummaryWriter
 
 class Logger:
     def __init__(self, console_logger):
@@ -15,9 +13,7 @@ class Logger:
         self.stats = defaultdict(lambda: [])
 
     def setup_tb(self, directory_name):
-        # Import here so it doesn't have to be installed if you don't use it
-        from tensorboardX import SummaryWriter
-        self.writer = SummaryWriter(logdir=directory_name)
+        self.writer = SummaryWriter(log_dir=directory_name)
         self.use_tb = True
 
     def setup_sacred(self, sacred_run_dict):
@@ -37,7 +33,7 @@ class Logger:
             else:
                 self.sacred_info["{}_T".format(key)] = [t]
                 self.sacred_info[key] = [value]
-    
+
     def log_histogram(self, key, value, t):
         self.writer.add_histogram(key, value, t)
 

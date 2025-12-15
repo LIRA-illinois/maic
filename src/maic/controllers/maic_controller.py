@@ -1,6 +1,7 @@
-from modules.agents import REGISTRY as agent_REGISTRY
-from components.action_selectors import REGISTRY as action_REGISTRY
 import torch as th
+
+from maic.modules.agents import REGISTRY as agent_REGISTRY
+from maic.components.action_selectors import REGISTRY as action_REGISTRY
 
 
 # This multi-agent controller shares parameters between agents
@@ -26,7 +27,7 @@ class MAICMAC:
     def forward(self, ep_batch, t, test_mode=False, **kwargs):
         agent_inputs = self._build_inputs(ep_batch, t)
         avail_actions = ep_batch["avail_actions"][:, t]
-        agent_outs, self.hidden_states, losses = self.agent.forward(agent_inputs, self.hidden_states, ep_batch.batch_size, 
+        agent_outs, self.hidden_states, losses = self.agent.forward(agent_inputs, self.hidden_states, ep_batch.batch_size,
             test_mode=test_mode, **kwargs)
 
         # Softmax the agent outputs if they're policy logits

@@ -1,0 +1,7 @@
+
+python3 src/main.py --config=[Algorithm name] --env-config=[Env name]
+
+python3 src/main.py --config=maic --env-config=foraging
+
+
+

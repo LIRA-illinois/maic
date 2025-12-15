@@ -1,12 +1,12 @@
 import copy
-from components.episode_buffer import EpisodeBatch
-from modules.mixers.dmaq_general import DMAQer
-from modules.mixers.dmaq_qatten import DMAQ_QattenMixer
 import torch.nn.functional as F
 import torch as th
 from torch.optim import RMSprop
 import numpy as np
 
+from maic.components.episode_buffer import EpisodeBatch
+from maic.modules.mixers.dmaq_general import DMAQer
+from maic.modules.mixers.dmaq_qatten import DMAQ_QattenMixer
 
 class DMAQ_qattenLearner:
     def __init__(self, mac, scheme, logger, args):
