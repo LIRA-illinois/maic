@@ -60,12 +60,12 @@ Download the [SMAC Maps](https://github.com/oxwhirl/smac/releases/download/v0.1-
 To see the list of SMAC maps, together with the number of ally and enemy units and episode limit, run:
 
 ```shell
-$ python -m smac.bin.map_list 
+$ python -m smac.bin.map_list
 ```
 
 ## Testing SMAC
 
-Please run the following command to make sure that `smac` and its maps are properly installed. 
+Please run the following command to make sure that `smac` and its maps are properly installed.
 
 ```bash
 $ python -m smac.examples.random_agents
@@ -83,13 +83,13 @@ This works for any replay as long as the map can be found by the game.
 
 For more information, please refer to [PySC2](https://github.com/deepmind/pysc2) documentation.
 
-# Documentation 
+# Documentation
 
-For the detailed description of the environment, read the [SMAC documentation](docs/smac.md). 
+For the detailed description of the environment, read the [SMAC documentation](docs/smac.md).
 
 The initial results of our experiments using SMAC can be found in the [accompanying paper](https://arxiv.org/abs/1902.04043).
 
-# Citing  SMAC 
+# Citing  SMAC
 
 If you use SMAC in your research, please cite the [SMAC paper](https://arxiv.org/abs/1902.04043).
 
@@ -109,12 +109,12 @@ In BibTeX format:
 
 # Code Example
 
-Below is a small code example which illustrates how SMAC can be used. Here, individual agents execute random policies after receiving the observations and global state from the environment.  
+Below is a small code example which illustrates how SMAC can be used. Here, individual agents execute random policies after receiving the observations and global state from the environment.
 
 If you want to try the state-of-the-art algorithms (such as [QMIX](https://arxiv.org/abs/1803.11485) and [COMA](https://arxiv.org/abs/1705.08926)) on SMAC, make use of [PyMARL](https://github.com/oxwhirl/smac) - our framework for MARL research.
 
 ```python
-from smac.env import StarCraft2Env
+maic.envs.qplex_smac.smac.env. import StarCraft2Env
 import numpy as np
 
 

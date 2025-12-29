@@ -9,8 +9,14 @@ import datetime
 from maic.envs.multiagentenv import MultiAgentEnv
 
 
-class ForagingEnv(MultiAgentEnv):
+class ForagingEnvWrapper(MultiAgentEnv):
+    """wrapper class for the LBF foraging environment
 
+    Parameters
+    ----------
+    MultiAgentEnv : _type_
+        _description_
+    """
     def __init__(
         self,
         field_size: int,
@@ -19,9 +25,9 @@ class ForagingEnv(MultiAgentEnv):
         force_coop: bool,
         partially_observe: bool,
         sight: int,
-        is_print: bool,
-        seed: int,
-        need_render: bool,
+        is_print: bool = False,
+        seed: int = 0,
+        need_render: bool = False,
         render_output_path: str = "",
     ):
         self.n_agents = players
@@ -43,10 +49,12 @@ class ForagingEnv(MultiAgentEnv):
             "-coop" if force_coop else "",
             "-{}s".format(sight) if partially_observe else "",
         )
+
         if is_print:
             print("Env:", env_id, file=stderr)
-        self.env = gym.make(env_id)
-        self.env.seed(seed)
+
+        self.env: gym.Env = gym.make(env_id)
+        self.env.unwrapped.seed(seed)
 
         if self.need_render:
             date = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -55,7 +63,7 @@ class ForagingEnv(MultiAgentEnv):
                 os.makedirs(render_path, exist_ok=True)
             self.render_path = render_path
 
-    def step(self, actions):
+    def step(self, actions) -> tuple[float, bool, dict]:
         """Returns reward, terminated, info"""
         self._total_steps += 1
         self._episode_steps += 1
@@ -98,7 +106,7 @@ class ForagingEnv(MultiAgentEnv):
         self.agent_score += rewards
 
         reward = np.sum(rewards)
-        terminated = np.all(dones)
+        terminated = bool(np.all(dones))
 
         return reward, terminated, {}
 
@@ -112,7 +120,7 @@ class ForagingEnv(MultiAgentEnv):
 
     def get_obs_size(self):
         """Returns the shape of the observation"""
-        return self.env._get_observation_space().shape[0]
+        return self.env.unwrapped._get_observation_space().shape[0]
 
     def get_state(self):
         state = self.obs[0]
@@ -130,7 +138,7 @@ class ForagingEnv(MultiAgentEnv):
     def get_avail_agent_actions(self, agent_id):
         """Returns the available actions for agent_id"""
         res = [0] * self.n_actions
-        t = self.env._valid_actions[self.env.players[agent_id]]
+        t = self.env.unwrapped._valid_actions[self.env.unwrapped.players[agent_id]]
         for i in range(len(t)):
             res[t[i].value] = 1
         return res
@@ -140,7 +148,7 @@ class ForagingEnv(MultiAgentEnv):
         # TODO: This is only suitable for a discrete 1 dimensional action space for each agent
         return self.n_actions
 
-    def reset(self):
+    def reset(self, seed: int | None = None):
         """Returns initial observations and states"""
         self._episode_steps = 0
         self.agent_score = np.zeros(self.n_agents)
@@ -151,7 +159,7 @@ class ForagingEnv(MultiAgentEnv):
         self.env.render(mode)
 
     def close(self):
-        self.env.close()
+        self.env.unwrapped.close()
 
     def seed(self):
         pass

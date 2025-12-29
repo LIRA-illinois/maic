@@ -2,9 +2,9 @@ import logging
 from collections import namedtuple, defaultdict
 from enum import Enum
 from itertools import product
-from gym import Env
-import gym
-from gym.utils import seeding
+import gymnasium as gym
+from gymnasium.utils import seeding
+from gymnasium import Env
 import numpy as np
 
 
@@ -67,17 +67,18 @@ class ForagingEnv(Env):
 
     def __init__(
         self,
-        players,
-        max_player_level,
-        field_size,
-        max_food,
-        sight,
-        max_episode_steps,
-        force_coop,
+        players: int = 4,
+        field_size: tuple[int, int] = (10, 10),
+        max_food: int = 2,
+        force_coop: bool = False,
+        sight: int = 2,
+        max_player_level: int = 6,
+        episode_limit: int = 50,
         normalize_reward=True,
+        seed: int = 0,
     ):
         self.logger = logging.getLogger(__name__)
-        self.seed()
+        self.seed(seed)
         self.players = [Player() for _ in range(players)]
 
         self.field = np.zeros(field_size, np.int32)
@@ -89,12 +90,16 @@ class ForagingEnv(Env):
         self.force_coop = force_coop
         self._game_over = None
 
-        self.action_space = gym.spaces.Tuple(tuple([gym.spaces.Discrete(6)] * len(self.players)))
-        self.observation_space = gym.spaces.Tuple(tuple([self._get_observation_space()] * len(self.players)))
+        self.action_space = gym.spaces.Tuple(
+            tuple([gym.spaces.Discrete(6)] * len(self.players))
+        )
+        self.observation_space = gym.spaces.Tuple(
+            tuple([self._get_observation_space()] * len(self.players))
+        )
 
         self._rendering_initialized = False
         self._valid_actions = None
-        self._max_episode_steps = max_episode_steps
+        self.episode_limit = episode_limit
 
         self._normalize_reward = normalize_reward
 
@@ -223,8 +228,8 @@ class ForagingEnv(Env):
 
         while food_count < max_food and attempts < 1000:
             attempts += 1
-            row = self.np_random.randint(1, self.rows - 1)
-            col = self.np_random.randint(1, self.cols - 1)
+            row = self.np_random.integers(1, self.rows - 1)
+            col = self.np_random.integers(1, self.cols - 1)
 
             # check if it has neighbors:
             if (
@@ -237,7 +242,7 @@ class ForagingEnv(Env):
             self.field[row, col] = (
                 min_level
                 if min_level == max_level
-                else self.np_random.randint(min_level, max_level)
+                else self.np_random.integers(min_level, max_level)
                 # levels[food_count]
             )
             food_count += 1
@@ -254,7 +259,7 @@ class ForagingEnv(Env):
         return True
 
     def spawn_players(self, max_player_level):
-        
+
         levels = [1, 2, 3, 4]
         player_count = 0
 
@@ -264,18 +269,18 @@ class ForagingEnv(Env):
             player.reward = 0
 
             while attempts < 1000:
-                row = self.np_random.randint(0, self.rows - 1)
-                col = self.np_random.randint(0, self.cols - 1)
+                row = self.np_random.integers(0, self.rows - 1)
+                col = self.np_random.integers(0, self.cols - 1)
                 if self._is_empty_location(row, col):
                     player.setup(
                         (row, col),
-                        self.np_random.randint(1, max_player_level),
+                        self.np_random.integers(1, max_player_level),
                         # levels[player_count],
                         self.field_size,
                     )
                     break
                 attempts += 1
-            
+
             player_count += 1
 
     def _is_valid_action(self, player, action):
@@ -396,14 +401,17 @@ class ForagingEnv(Env):
 
         return nobs, nreward, ndone, ninfo
 
-    def reset(self):
+    def reset(
+        self,
+        *,
+        seed: int | None = None,
+        options: dict | None = None,
+    ):
         self.field = np.zeros(self.field_size, np.int32)
         self.spawn_players(self.max_player_level)
         player_levels = sorted([player.level for player in self.players])
 
-        self.spawn_food(
-            self.max_food, max_level=sum(player_levels[:3])
-        )
+        self.spawn_food(self.max_food, max_level=sum(player_levels[:3]))
         self.current_step = 0
         self._game_over = False
         self._gen_valid_moves()
@@ -492,8 +500,8 @@ class ForagingEnv(Env):
             # and the food is removed
             self.field[frow, fcol] = 0
 
-        self._game_over = (
-            self.field.sum() == 0 or self._max_episode_steps <= self.current_step
+        self._game_over = (self.field.sum() == 0) or (
+            self.episode_limit <= self.current_step
         )
         self._gen_valid_moves()
 
@@ -521,3 +529,17 @@ class ForagingEnv(Env):
 
     def get_players_position(self):
         return [player.position for player in self.players]
+
+    def get_env_info(self):
+        env_info = {
+            "state_shape": self.get_state_size(),
+            "obs_shape": self.get_obs_size(),
+            "n_actions": self.get_total_actions(),
+            "n_agents": self.n_agents,
+            "episode_limit": self.episode_limit,
+        }
+        return env_info
+
+    def get_obs_size(self):
+        """Returns the shape of the observation"""
+        return self.env._get_observation_space().shape[0]

@@ -2,7 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from smac.env.multiagentenv import MultiAgentEnv
+from maic.envs.qplex_smac.smac.env.multiagentenv import MultiAgentEnv
 
 import atexit
 from operator import attrgetter
@@ -14,7 +14,7 @@ from absl import logging
 import random
 
 
-class mmdp_game1Env(MultiAgentEnv):
+class Matrix_game3Env(MultiAgentEnv):
     """The StarCraft II environment for decentralised multi-agent
     micromanagement scenarios.
     """
@@ -22,8 +22,11 @@ class mmdp_game1Env(MultiAgentEnv):
             self,
             n_agents=2,
             n_actions=100,
-            reward_win=1000,
+            reward_win=10,
+            first_weight=10.4,
             episode_limit=50,
+            coor_len=3,
+            coor_list=None,
             obs_last_action=True,
             state_last_action=True,
             is_print=False,
@@ -32,9 +35,12 @@ class mmdp_game1Env(MultiAgentEnv):
             seed=None
     ):
         # Map arguments
+        self.print_rew = print_rew
+        self.is_print = is_print
+        self.print_steps = print_steps
         self._seed = random.randint(0, 9999)
         np.random.seed(self._seed)
-        self.n_agents = 2
+        self.n_agents = n_agents
 
         # Rewards args
         self.reward_win = reward_win
@@ -43,8 +49,7 @@ class mmdp_game1Env(MultiAgentEnv):
         self._seed = seed
 
         # Actions
-        self.n_states = 2
-        self.n_actions = 2
+        self.n_actions = 3
 
         # Statistics
         self._episode_count = 0
@@ -57,20 +62,12 @@ class mmdp_game1Env(MultiAgentEnv):
         self.rew_gather = []
         self.is_print_once = False
 
-        self.episode_limit = episode_limit
+        self.episode_limit = 1
 
-        self.R = np.zeros((self.n_states, self.n_actions, self.n_actions))
-        self.R[1, 0, 0] = self.reward_win
-
-        self.T = np.zeros((self.n_states, self.n_actions, self.n_actions)).astype('int32')
-        self.T[1, 0, 0] = 1
-        self.T[1, 0, 1] = 1
-        self.T[1, 1, 0] = 1
-
-        self.state_now = 1
+        self.matrix_table = np.array([[8, -12, -12], [-12, 6, 0], [-12, 0, 6]])
 
         # Qatten
-        self.unit_dim = self.n_states
+        self.unit_dim = 1
 
     def step(self, actions):
         """Returns reward, terminated, info."""
@@ -78,8 +75,7 @@ class mmdp_game1Env(MultiAgentEnv):
         self._episode_steps += 1
         info = {}
 
-        reward = self.R[self.state_now][actions[0]][actions[1]]
-        self.state_now = self.T[self.state_now][actions[0]][actions[1]]
+        reward = self.matrix_table[actions[0]][actions[1]]
 
         terminated = False
         info['battle_won'] = False
@@ -99,19 +95,19 @@ class mmdp_game1Env(MultiAgentEnv):
 
     def get_obs_agent(self, agent_id):
         """Returns observation for agent_id."""
-        return np.eye(self.n_states)[self.state_now]
+        return np.array([self._episode_steps])
 
     def get_obs_size(self):
         """Returns the size of the observation."""
-        return 2
+        return 1
 
     def get_state(self):
         """Returns the global state."""
-        return np.concatenate([np.eye(self.n_states)[self.state_now] for _ in range(self.n_agents)], axis=0)
+        return np.array([0 for _ in range(self.n_agents)])
 
     def get_state_size(self):
         """Returns the size of the global state."""
-        return self.n_agents * self.n_states
+        return self.n_agents
 
     def get_avail_actions(self):
         """Returns the available actions of all agents in a list."""
@@ -128,7 +124,6 @@ class mmdp_game1Env(MultiAgentEnv):
     def reset(self):
         """Returns initial observations and states."""
         self._episode_steps = 0
-        self.state_now = 1
 
         return self.get_obs(), self.get_state()
 

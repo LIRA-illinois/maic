@@ -31,27 +31,45 @@ def run(_run, _config, _log):
     logger = Logger(_log)
 
     _log.info("Experiment Parameters:")
-    experiment_params = pprint.pformat(_config,
-                                       indent=4,
-                                       width=1)
+    experiment_params = pprint.pformat(_config, indent=4, width=1)
     _log.info("\n\n" + experiment_params + "\n")
 
     # configure tensorboard logger
     if len(args.comment) > 0:
-        alg_name = '{}_{}'.format(args.name, args.comment)
+        alg_name = "{}_{}".format(args.name, args.comment)
     else:
         alg_name = args.name
-    if str(args.env).startswith('sc2'):
-        unique_token = "{}_{}_{}_{}".format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), alg_name, args.env, args.env_args['map_name'])
+    if str(args.env).startswith("sc2"):
+        unique_token = "{}_{}_{}_{}".format(
+            datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"),
+            alg_name,
+            args.env,
+            args.env_args["map_name"],
+        )
     else:
-        unique_token = "{}_{}_{}".format(datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), alg_name, args.env)
+        unique_token = "{}_{}_{}".format(
+            datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), alg_name, args.env
+        )
 
     args.unique_token = unique_token
 
-    if str(args.env).startswith('sc2'):
-        tb_logs_direc = os.path.join(dirname(dirname(abspath(__file__))), "results", "tb_logs", args.env, args.env_args['map_name'], alg_name)
+    if str(args.env).startswith("sc2"):
+        tb_logs_direc = os.path.join(
+            dirname(dirname(abspath(__file__))),
+            "results",
+            "tb_logs",
+            args.env,
+            args.env_args["map_name"],
+            alg_name,
+        )
     else:
-        tb_logs_direc = os.path.join(dirname(dirname(abspath(__file__))), "results", "tb_logs", args.env, alg_name)
+        tb_logs_direc = os.path.join(
+            dirname(dirname(abspath(__file__))),
+            "results",
+            "tb_logs",
+            args.env,
+            alg_name,
+        )
     tb_exp_direc = os.path.join(tb_logs_direc, unique_token)
     if args.use_tensorboard:
         logger.setup_tb(tb_exp_direc)
@@ -63,12 +81,22 @@ def run(_run, _config, _log):
     run_sequential(args=args, logger=logger)
 
     if args.use_tensorboard:
-        if str(args.env).startswith('sc2'):
-            json_output_direc = os.path.join(dirname(dirname(abspath(__file__))), "results", args.env, args.env_args['map_name'], alg_name)
+        if str(args.env).startswith("sc2"):
+            json_output_direc = os.path.join(
+                dirname(dirname(abspath(__file__))),
+                "results",
+                args.env,
+                args.env_args["map_name"],
+                alg_name,
+            )
         else:
-            json_output_direc = os.path.join(dirname(dirname(abspath(__file__))), "results", args.env, alg_name)
-        json_exp_direc = os.path.join(json_output_direc, unique_token + '.json')
-        print(f'Export tensorboard scalars at {tb_exp_direc} to json file {json_exp_direc}')
+            json_output_direc = os.path.join(
+                dirname(dirname(abspath(__file__))), "results", args.env, alg_name
+            )
+        json_exp_direc = os.path.join(json_output_direc, unique_token + ".json")
+        print(
+            f"Export tensorboard scalars at {tb_exp_direc} to json file {json_exp_direc}"
+        )
         export_scalar_to_json(tb_exp_direc, json_output_direc, args)
 
     # Clean up after finishing
@@ -101,10 +129,18 @@ def evaluate_sequential(args, runner):
 def save_one_buffer(args, save_buffer, env_name, from_start=False):
     x_env_name = env_name
     if from_start:
-        x_env_name += '_from_start/'
-    path_name = '../../buffer/' + x_env_name + '/buffer_' + str(args.save_buffer_id) + '/'
+        x_env_name += "_from_start/"
+    path_name = (
+        "../../buffer/" + x_env_name + "/buffer_" + str(args.save_buffer_id) + "/"
+    )
     if os.path.exists(path_name):
-        random_name = '../../buffer/' + x_env_name + '/buffer_' + str(random.randint(10, 1000)) + '/'
+        random_name = (
+            "../../buffer/"
+            + x_env_name
+            + "/buffer_"
+            + str(random.randint(10, 1000))
+            + "/"
+        )
         os.rename(path_name, random_name)
     if not os.path.exists(path_name):
         os.makedirs(path_name)
@@ -130,39 +166,51 @@ def run_sequential(args, logger):
         "state": {"vshape": env_info["state_shape"]},
         "obs": {"vshape": env_info["obs_shape"], "group": "agents"},
         "actions": {"vshape": (1,), "group": "agents", "dtype": th.long},
-        "avail_actions": {"vshape": (env_info["n_actions"],), "group": "agents", "dtype": th.int},
+        "avail_actions": {
+            "vshape": (env_info["n_actions"],),
+            "group": "agents",
+            "dtype": th.int,
+        },
         "reward": {"vshape": (1,)},
         "terminated": {"vshape": (1,), "dtype": th.uint8},
     }
-    groups = {
-        "agents": args.n_agents
-    }
-    preprocess = {
-        "actions": ("actions_onehot", [OneHot(out_dim=args.n_actions)])
-    }
+    groups = {"agents": args.n_agents}
+    preprocess = {"actions": ("actions_onehot", [OneHot(out_dim=args.n_actions)])}
 
     env_name = args.env
-    if env_name == 'sc2':
-        env_name += '/' + args.env_args['map_name']
+    if env_name == "sc2":
+        env_name += "/" + args.env_args["map_name"]
 
-    buffer = ReplayBuffer(scheme, groups, args.buffer_size, env_info["episode_limit"] + 1,
-                          args.burn_in_period,
-                          preprocess=preprocess,
-                          device="cpu" if args.buffer_cpu_only else args.device)
+    buffer = ReplayBuffer(
+        scheme,
+        groups,
+        args.buffer_size,
+        env_info["episode_limit"] + 1,
+        args.burn_in_period,
+        preprocess=preprocess,
+        device="cpu" if args.buffer_cpu_only else args.device,
+    )
 
     if args.is_save_buffer:
-        save_buffer = ReplayBuffer(scheme, groups, args.save_buffer_size, env_info["episode_limit"] + 1,
-                                   args.burn_in_period,
-                                   preprocess=preprocess,
-                                   device="cpu" if args.buffer_cpu_only else args.device)
+        save_buffer = ReplayBuffer(
+            scheme,
+            groups,
+            args.save_buffer_size,
+            env_info["episode_limit"] + 1,
+            args.burn_in_period,
+            preprocess=preprocess,
+            device="cpu" if args.buffer_cpu_only else args.device,
+        )
 
     if args.is_batch_rl:
-        assert (args.is_save_buffer == False)
+        assert args.is_save_buffer == False
         x_env_name = env_name
         if args.is_from_start:
-            x_env_name += '_from_start/'
-        path_name = '../../buffer/' + x_env_name + '/buffer_' + str(args.load_buffer_id) + '/'
-        assert (os.path.exists(path_name) == True)
+            x_env_name += "_from_start/"
+        path_name = (
+            "../../buffer/" + x_env_name + "/buffer_" + str(args.load_buffer_id) + "/"
+        )
+        assert os.path.exists(path_name) == True
         buffer.load(path_name)
 
     # Setup multiagent controller here
@@ -183,7 +231,9 @@ def run_sequential(args, logger):
         timestep_to_load = 0
 
         if not os.path.isdir(args.checkpoint_path):
-            logger.console_logger.info("Checkpoint directiory {} doesn't exist".format(args.checkpoint_path))
+            logger.console_logger.info(
+                "Checkpoint directiory {} doesn't exist".format(args.checkpoint_path)
+            )
             return
 
         # Go through all files in args.checkpoint_path
@@ -221,8 +271,12 @@ def run_sequential(args, logger):
 
     logger.console_logger.info("Beginning training for {} timesteps".format(args.t_max))
 
-    if args.env == 'matrix_game_1' or args.env == 'matrix_game_2' or args.env == 'matrix_game_3' \
-            or args.env == 'mmdp_game_1':
+    if (
+        args.env == "matrix_game_1"
+        or args.env == "matrix_game_2"
+        or args.env == "matrix_game_3"
+        or args.env == "mmdp_game_1"
+    ):
         last_demo_T = -args.demo_interval - 1
 
     while runner.t_env <= args.t_max:
@@ -234,18 +288,32 @@ def run_sequential(args, logger):
 
             if args.is_save_buffer:
                 save_buffer.insert_episode_batch(episode_batch)
-                if save_buffer.is_from_start and save_buffer.episodes_in_buffer == save_buffer.buffer_size:
+                if (
+                    save_buffer.is_from_start
+                    and save_buffer.episodes_in_buffer == save_buffer.buffer_size
+                ):
                     save_buffer.is_from_start = False
                     save_one_buffer(args, save_buffer, env_name, from_start=True)
                 if save_buffer.buffer_index % args.save_buffer_interval == 0:
-                    print('current episodes_in_buffer: ', save_buffer.episodes_in_buffer)
+                    print(
+                        "current episodes_in_buffer: ", save_buffer.episodes_in_buffer
+                    )
 
         for _ in range(args.num_circle):
             if buffer.can_sample(args.batch_size):
                 episode_sample = buffer.sample(args.batch_size)
 
                 if args.is_batch_rl:
-                    runner.t_env += int(th.sum(episode_sample['filled']).cpu().clone().detach().numpy()) // args.batch_size
+                    runner.t_env += (
+                        int(
+                            th.sum(episode_sample["filled"])
+                            .cpu()
+                            .clone()
+                            .detach()
+                            .numpy()
+                        )
+                        // args.batch_size
+                    )
 
                 # Truncate batch to only filled timesteps
                 max_ep_t = episode_sample.max_t_filled()
@@ -256,7 +324,7 @@ def run_sequential(args, logger):
 
                 learner.train(episode_sample, runner.t_env, episode)
 
-                if args.env == 'mmdp_game_1' and args.learner == "q_learner_exp":
+                if args.env == "mmdp_game_1" and args.learner == "q_learner_exp":
                     for i in range(int(learner.target_gap) - 1):
                         episode_sample = buffer.sample(args.batch_size)
 
@@ -271,85 +339,164 @@ def run_sequential(args, logger):
 
         # Execute test runs once in a while
         n_test_runs = max(1, args.test_nepisode // runner.batch_size)
-        if (runner.t_env - last_test_T) / args.test_interval >= 1.0 :
+        if (runner.t_env - last_test_T) / args.test_interval >= 1.0:
 
-            logger.console_logger.info("t_env: {} / {}".format(runner.t_env, args.t_max))
-            logger.console_logger.info("Estimated time left: {}. Time passed: {}".format(
-                time_left(last_time, last_test_T, runner.t_env, args.t_max), time_str(time.time() - start_time)))
+            logger.console_logger.info(
+                "t_env: {} / {}".format(runner.t_env, args.t_max)
+            )
+            logger.console_logger.info(
+                "Estimated time left: {}. Time passed: {}".format(
+                    time_left(last_time, last_test_T, runner.t_env, args.t_max),
+                    time_str(time.time() - start_time),
+                )
+            )
             last_time = time.time()
 
             last_test_T = runner.t_env
             for _ in range(n_test_runs):
                 runner.run(test_mode=True)
-        if args.env == 'mmdp_game_1' and \
-                (runner.t_env - last_demo_T) / args.demo_interval >= 1.0 and buffer.can_sample(args.batch_size):
+        if (
+            args.env == "mmdp_game_1"
+            and (runner.t_env - last_demo_T) / args.demo_interval >= 1.0
+            and buffer.can_sample(args.batch_size)
+        ):
             ### demo
             episode_sample = cp.deepcopy(buffer.sample(1))
             for i in range(args.n_actions):
                 for j in range(args.n_actions):
-                    new_actions = th.Tensor([i, j]).unsqueeze(0).repeat(args.episode_limit + 1, 1)
+                    new_actions = (
+                        th.Tensor([i, j]).unsqueeze(0).repeat(args.episode_limit + 1, 1)
+                    )
                     if i == 0 and j == 0:
-                        rew = th.Tensor([1, ])
+                        rew = th.Tensor(
+                            [
+                                1,
+                            ]
+                        )
                     else:
-                        rew = th.Tensor([0, ])
+                        rew = th.Tensor(
+                            [
+                                0,
+                            ]
+                        )
                     if i == 1 and j == 1:
-                        new_obs = th.Tensor([1, 0]).unsqueeze(0).unsqueeze(0).repeat(args.episode_limit, args.n_agents, 1)
+                        new_obs = (
+                            th.Tensor([1, 0])
+                            .unsqueeze(0)
+                            .unsqueeze(0)
+                            .repeat(args.episode_limit, args.n_agents, 1)
+                        )
                     else:
-                        new_obs = th.Tensor([0, 1]).unsqueeze(0).unsqueeze(0).repeat(args.episode_limit, args.n_agents, 1)
+                        new_obs = (
+                            th.Tensor([0, 1])
+                            .unsqueeze(0)
+                            .unsqueeze(0)
+                            .repeat(args.episode_limit, args.n_agents, 1)
+                        )
                     # Truncate batch to only filled timesteps
                     max_ep_t = episode_sample.max_t_filled()
                     episode_sample = episode_sample[:, :max_ep_t]
-                    episode_sample['actions'][0, :, :, 0] = new_actions
-                    episode_sample['obs'][0, 1:, :, :] = new_obs
-                    episode_sample['reward'][0, 0, 0] = rew
-                    new_actions_onehot = th.zeros(episode_sample['actions'].squeeze(3).shape + (args.n_actions,))
-                    new_actions_onehot = new_actions_onehot.scatter_(3, episode_sample['actions'].cpu(), 1)
-                    episode_sample['actions_onehot'][:] = new_actions_onehot
+                    episode_sample["actions"][0, :, :, 0] = new_actions
+                    episode_sample["obs"][0, 1:, :, :] = new_obs
+                    episode_sample["reward"][0, 0, 0] = rew
+                    new_actions_onehot = th.zeros(
+                        episode_sample["actions"].squeeze(3).shape + (args.n_actions,)
+                    )
+                    new_actions_onehot = new_actions_onehot.scatter_(
+                        3, episode_sample["actions"].cpu(), 1
+                    )
+                    episode_sample["actions_onehot"][:] = new_actions_onehot
 
                     if episode_sample.device != args.device:
                         episode_sample.to(args.device)
 
-                    #print("action pair: %d, %d" % (i, j))
-                    learner.train(episode_sample, runner.t_env, episode, show_demo=True, save_data=(i, j))
+                    # print("action pair: %d, %d" % (i, j))
+                    learner.train(
+                        episode_sample,
+                        runner.t_env,
+                        episode,
+                        show_demo=True,
+                        save_data=(i, j),
+                    )
             last_demo_T = runner.t_env
-            #time.sleep(1)
+            # time.sleep(1)
 
-        if (args.env == 'matrix_game_1' or args.env == 'matrix_game_2' or args.env == 'matrix_game_3') and \
-                (runner.t_env - last_demo_T) / args.demo_interval >= 1.0 and buffer.can_sample(args.batch_size):
+        if (
+            (
+                args.env == "matrix_game_1"
+                or args.env == "matrix_game_2"
+                or args.env == "matrix_game_3"
+            )
+            and (runner.t_env - last_demo_T) / args.demo_interval >= 1.0
+            and buffer.can_sample(args.batch_size)
+        ):
             ### demo
             episode_sample = cp.deepcopy(buffer.sample(1))
             for i in range(args.n_actions):
                 for j in range(args.n_actions):
-                    new_actions = th.Tensor([i, j]).unsqueeze(0).repeat(args.episode_limit + 1, 1)
+                    new_actions = (
+                        th.Tensor([i, j]).unsqueeze(0).repeat(args.episode_limit + 1, 1)
+                    )
                     # Truncate batch to only filled timesteps
                     max_ep_t = episode_sample.max_t_filled()
                     episode_sample = episode_sample[:, :max_ep_t]
-                    episode_sample['actions'][0, :, :, 0] = new_actions
-                    new_actions_onehot = th.zeros(episode_sample['actions'].squeeze(3).shape + (args.n_actions,)).cuda()
-                    new_actions_onehot = new_actions_onehot.scatter_(3, episode_sample['actions'].cuda(), 1)
-                    episode_sample['actions_onehot'][:] = new_actions_onehot
+                    episode_sample["actions"][0, :, :, 0] = new_actions
+                    new_actions_onehot = th.zeros(
+                        episode_sample["actions"].squeeze(3).shape + (args.n_actions,)
+                    ).cuda()
+                    new_actions_onehot = new_actions_onehot.scatter_(
+                        3, episode_sample["actions"].cuda(), 1
+                    )
+                    episode_sample["actions_onehot"][:] = new_actions_onehot
                     if i == 0 and j == 0:
-                        rew = th.Tensor([8, ])
+                        rew = th.Tensor(
+                            [
+                                8,
+                            ]
+                        )
                     elif i == 0 or j == 0:
-                        rew = th.Tensor([-12, ])
+                        rew = th.Tensor(
+                            [
+                                -12,
+                            ]
+                        )
                     else:
-                        rew = th.Tensor([0, ])
-                    if args.env == 'matrix_game_3':
+                        rew = th.Tensor(
+                            [
+                                0,
+                            ]
+                        )
+                    if args.env == "matrix_game_3":
                         if i == 1 and j == 1 or i == 2 and j == 2:
-                            rew = th.Tensor([6, ])
-                    episode_sample['reward'][0, 0, 0] = rew
+                            rew = th.Tensor(
+                                [
+                                    6,
+                                ]
+                            )
+                    episode_sample["reward"][0, 0, 0] = rew
 
                     if episode_sample.device != args.device:
                         episode_sample.to(args.device)
 
-                    #print("action pair: %d, %d" % (i, j))
-                    learner.train(episode_sample, runner.t_env, episode, show_demo=True, save_data=(i, j))
+                    # print("action pair: %d, %d" % (i, j))
+                    learner.train(
+                        episode_sample,
+                        runner.t_env,
+                        episode,
+                        show_demo=True,
+                        save_data=(i, j),
+                    )
             last_demo_T = runner.t_env
-            #time.sleep(1)
+            # time.sleep(1)
 
-        if args.save_model and (runner.t_env - model_save_time >= args.save_model_interval or model_save_time == 0):
+        if args.save_model and (
+            runner.t_env - model_save_time >= args.save_model_interval
+            or model_save_time == 0
+        ):
             model_save_time = runner.t_env
-            save_path = os.path.join(args.local_results_path, "models", args.unique_token, str(runner.t_env))
+            save_path = os.path.join(
+                args.local_results_path, "models", args.unique_token, str(runner.t_env)
+            )
             os.makedirs(save_path, exist_ok=True)
             logger.console_logger.info("Saving models to {}".format(save_path))
 
@@ -378,25 +525,35 @@ def args_sanity_check(config, _log):
     # config["use_cuda"] = True # Use cuda whenever possible!
     if config["use_cuda"] and not th.cuda.is_available():
         config["use_cuda"] = False
-        _log.warning("CUDA flag use_cuda was switched OFF automatically because no CUDA devices are available!")
+        _log.warning(
+            "CUDA flag use_cuda was switched OFF automatically because no CUDA devices are available!"
+        )
 
     if config["test_nepisode"] < config["batch_size_run"]:
         config["test_nepisode"] = config["batch_size_run"]
     else:
-        config["test_nepisode"] = (config["test_nepisode"]//config["batch_size_run"]) * config["batch_size_run"]
+        config["test_nepisode"] = (
+            config["test_nepisode"] // config["batch_size_run"]
+        ) * config["batch_size_run"]
 
     return config
 
+
 def export_scalar_to_json(tensorboard_path, output_path, args):
     from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
+
     os.makedirs(output_path, exist_ok=True)
     filename = os.path.basename(tensorboard_path)
-    output_path = os.path.join(output_path, filename + '.json')
+    output_path = os.path.join(output_path, filename + ".json")
     summary = EventAccumulator(tensorboard_path).Reload()
-    scalar_list = summary.Tags()['scalars']
+    scalar_list = summary.Tags()["scalars"]
     stone_dict = {}
-    stone_dict['seed'] = args.seed
+    stone_dict["seed"] = args.seed
     for scalar_name in scalar_list:
-        stone_dict['_'.join([scalar_name, 'T'])] = [ scalar.step for scalar in summary.Scalars(scalar_name) ]
-        stone_dict[scalar_name] = [ scalar.value for scalar in summary.Scalars(scalar_name) ]
-    json.dump(stone_dict, open(output_path, 'w'), ensure_ascii=False)
+        stone_dict["_".join([scalar_name, "T"])] = [
+            scalar.step for scalar in summary.Scalars(scalar_name)
+        ]
+        stone_dict[scalar_name] = [
+            scalar.value for scalar in summary.Scalars(scalar_name)
+        ]
+    json.dump(stone_dict, open(output_path, "w"), ensure_ascii=False)

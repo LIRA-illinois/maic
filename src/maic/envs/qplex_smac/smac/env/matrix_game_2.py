@@ -2,7 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from smac.env.multiagentenv import MultiAgentEnv
+from maic.envs.qplex_smac.smac.env.multiagentenv import MultiAgentEnv
 
 import atexit
 from operator import attrgetter
@@ -14,7 +14,7 @@ from absl import logging
 import random
 
 
-class Matrix_game3Env(MultiAgentEnv):
+class Matrix_game2Env(MultiAgentEnv):
     """The StarCraft II environment for decentralised multi-agent
     micromanagement scenarios.
     """
@@ -64,7 +64,7 @@ class Matrix_game3Env(MultiAgentEnv):
 
         self.episode_limit = 1
 
-        self.matrix_table = np.array([[8, -12, -12], [-12, 6, 0], [-12, 0, 6]])
+        self.matrix_table = np.array([[8, -12, -12], [-12, 0, 0], [-12, 0, 0]])
 
         # Qatten
         self.unit_dim = 1

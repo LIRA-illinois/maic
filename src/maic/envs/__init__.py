@@ -1,16 +1,14 @@
 from functools import partial
-
-# SMAC stuff
-# from maic.smac.env import MultiAgentEnv, StarCraft2Env
-# from .join1 import Join1Env
+from maic.envs.lbforaging.foraging_wrapper import ForagingEnvWrapper
 from maic.envs.multiagentenv import MultiAgentEnv
-from maic.envs.lbforaging import ForagingEnv
+from maic.envs.qplex_smac.smac.env.lbforaging import register_envs as register_foraging
+
 
 def env_fn(env, **kwargs) -> MultiAgentEnv:
     return env(**kwargs)
 
 REGISTRY = {
-    # "sc2": partial(env_fn, env=StarCraft2Env),
-    # "join1": partial(env_fn, env=Join1Env),
-    "foraging": partial(env_fn, env=ForagingEnv),
+    "foraging": partial(env_fn, env=ForagingEnvWrapper),
 }
+
+register_foraging()

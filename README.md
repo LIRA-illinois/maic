@@ -28,8 +28,7 @@ This project assumes the use of Ubuntu 22.04 as the operating system. Some comma
     - `poetry install`
     - `source .venv/bin/activate`
         - Activates the venv
-    - `pip install -e qplex_smac`
-        - Install `qplex_smac` in editable mode
+    - Run this `PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python`
 
 
 ## Run an experiment

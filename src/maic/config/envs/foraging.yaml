@@ -5,10 +5,11 @@ env_args:
   players: 4
   max_food: 2
   force_coop: False
-  partially_observe: True
   sight: 2
-  is_print: False
   need_render: False
+  partially_observe: True
+  is_print: False
+
 
 learner_log_interval: 10000
 log_interval: 10000

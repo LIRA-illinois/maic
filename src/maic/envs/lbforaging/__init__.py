@@ -1,1 +1,1 @@
-from .foraging import ForagingEnv
+from .foraging_wrapper import ForagingEnvWrapper

@@ -13,6 +13,8 @@ import yaml
 from run import run
 from maic.utils.logging import get_logger
 
+PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION="python"
+
 SETTINGS["CAPTURE_MODE"] = (
     "fd"  # set to "no" if you want to see stdout/stderr in console
 )
@@ -95,7 +97,6 @@ if __name__ == "__main__":
     params = deepcopy(sys.argv)
 
     # Get the defaults from default.yaml
-    __import__('ipdb').set_trace(context=3)
     with open(os.path.join(os.path.dirname(__file__), "maic", "config", "default.yaml"), "r") as f:
         try:
             config_dict = yaml.load(f, Loader=yaml.CLoader)
