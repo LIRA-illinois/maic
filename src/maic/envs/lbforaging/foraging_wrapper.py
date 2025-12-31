@@ -1,22 +1,22 @@
-import numpy as np
-import gymnasium as gym
-from sys import stderr
-import numpy as np
-import matplotlib.pyplot as plt
 import os
 import datetime
+from sys import stderr
+import numpy as np
+import gymnasium as gym
+import matplotlib.pyplot as plt
 
-from maic.envs.multiagentenv import MultiAgentEnv
+from maic.envs.multiagentenvwrapper import MultiAgentEnvWrapper
 
 
-class ForagingEnvWrapper(MultiAgentEnv):
+class ForagingEnvWrapper(MultiAgentEnvWrapper):
     """wrapper class for the LBF foraging environment
 
     Parameters
     ----------
-    MultiAgentEnv : _type_
+    MultiAgentEnvWrapper : _type_
         _description_
     """
+
     def __init__(
         self,
         field_size: int,

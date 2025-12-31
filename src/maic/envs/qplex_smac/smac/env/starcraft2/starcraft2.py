@@ -2,7 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from maic.envs.qplex_smac.smac.env.multiagentenv import MultiAgentEnv
+from maic.envs.qplex_smac.smac.env.multiagentenv import MultiAgentEnvWrapper
 from maic.envs.qplex_smac.smac.env.starcraft2.maps import get_map_params
 
 import atexit
@@ -57,7 +57,7 @@ class Direction(enum.IntEnum):
     WEST = 3
 
 
-class StarCraft2Env(MultiAgentEnv):
+class StarCraft2Env(MultiAgentEnvWrapper):
     """The StarCraft II environment for decentralised multi-agent
     micromanagement scenarios.
     """

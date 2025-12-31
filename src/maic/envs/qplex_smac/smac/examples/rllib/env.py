@@ -9,7 +9,7 @@ from ray import rllib
 from maic.envs.qplex_smac.smac.env. import StarCraft2Env
 
 
-class RLlibStarCraft2Env(rllib.MultiAgentEnv):
+class RLlibStarCraft2Env(rllib.MultiAgentEnvWrapper):
     """Wraps a smac StarCraft env to be compatible with RLlib multi-agent."""
 
     def __init__(self, **smac_args):

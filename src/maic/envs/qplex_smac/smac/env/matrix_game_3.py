@@ -2,7 +2,7 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-from maic.envs.qplex_smac.smac.env.multiagentenv import MultiAgentEnv
+from maic.envs.qplex_smac.smac.env.multiagentenv import MultiAgentEnvWrapper
 
 import atexit
 from operator import attrgetter
@@ -14,7 +14,7 @@ from absl import logging
 import random
 
 
-class Matrix_game3Env(MultiAgentEnv):
+class Matrix_game3Env(MultiAgentEnvWrapper):
     """The StarCraft II environment for decentralised multi-agent
     micromanagement scenarios.
     """
