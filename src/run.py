@@ -39,17 +39,12 @@ def run(_run, _config, _log):
         alg_name = "{}_{}".format(args.name, args.comment)
     else:
         alg_name = args.name
+
+    curr_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")[:-3]
     if str(args.env).startswith("sc2"):
-        unique_token = "{}_{}_{}_{}".format(
-            datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")[:-3],
-            alg_name,
-            args.env,
-            args.env_args["map_name"],
-        )
+        unique_token = f"{args.exp_name}_{curr_time}_{args.env}_{args.env_args['map_name']}_{alg_name}_seed_{args.seed}"
     else:
-        unique_token = "{}_{}_{}".format(
-            datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")[:-3], alg_name, args.env
-        )
+        unique_token = f"{args.exp_name}_{curr_time}_{args.env}_{alg_name}_seed_{args.seed}"
 
     args.unique_token = unique_token
 
@@ -85,13 +80,18 @@ def run(_run, _config, _log):
             json_output_direc = os.path.join(
                 dirname(dirname(abspath(__file__))),
                 "results",
+                "json_out",
                 args.env,
                 args.env_args["map_name"],
                 alg_name,
             )
         else:
             json_output_direc = os.path.join(
-                dirname(dirname(abspath(__file__))), "results", args.env, alg_name
+                dirname(dirname(abspath(__file__))),
+                "results",
+                "json_out",
+                args.env,
+                alg_name,
             )
         json_exp_direc = os.path.join(json_output_direc, unique_token + ".json")
         print(

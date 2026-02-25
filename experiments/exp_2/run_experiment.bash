@@ -1,6 +1,5 @@
 #!/bin/bash
 # get parent directory for exp name
-# parent_dir_name=$(basename "$(dirname "$filepath")")
 exp_path=$(dirname "${BASH_SOURCE[0]}")
 exp_name=$(basename $exp_path)
 
@@ -23,9 +22,9 @@ activate_env="source .venv/bin/activate;"
 
 for env_idx in "${!envs[@]}"; do
     for seed_idx in "${!seeds[@]}"; do
-        seed=${seeds[$seed_index]}
+        seed=${seeds[$seed_idx]}
         env_name=${envs[$env_idx]}
         param=${params[$env_idx]}
-        screen -dmS "$exp_name-${envs[$env_idx]}-$seed_idx" bash -c "$activate_env $cmd_prefix --env-config=$env_name $param seed=$seed"
+        screen -dmS "$exp_name-${envs[$env_idx]}-$seed_idx" bash -c "$activate_env $cmd_prefix --env-config=$env_name $param seed=$seed exp_name=$exp_name"
     done
 done

@@ -1,6 +1,7 @@
 # --- Defaults ---
 
 # --- pymarl options ---
+exp_name: "exp_default"
 runner: "episode" # Runs 1 env for an episode
 mac: "basic_mac" # Basic controller
 env: "sc2" # Environment name
