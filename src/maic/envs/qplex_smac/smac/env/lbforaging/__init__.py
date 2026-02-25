@@ -5,8 +5,8 @@ from maic.envs.qplex_smac.smac.env.lbforaging.foraging import ForagingEnv
 
 
 def register_envs():
-    sizes = range(5, 20)
-    players = range(2, 20)
+    sizes = range(4, 20)
+    players = range(3, 20)
     foods = range(1, 10)
     coop = [True, False]
     partial_obs = [True, False]

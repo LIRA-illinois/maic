@@ -542,4 +542,4 @@ class ForagingEnv(Env):
 
     def get_obs_size(self):
         """Returns the shape of the observation"""
-        return self.env._get_observation_space().shape[0]
+        return self._get_observation_space().shape[0]
