@@ -18,27 +18,28 @@ class Join1Env(MultiAgentEnvWrapper):
     """The StarCraft II environment for decentralised multi-agent
     micromanagement scenarios.
     """
+
     def __init__(
-            self,
-            n_agents=3,
-            state_numbers=[2,6,10],
-            reward_win=10,
-            obs_last_action=False,
-            state_last_action=True,
-            is_print=False,
-            print_rew=False,
-            print_steps=1000,
-            seed=None
+        self,
+        n_agents=3,
+        state_numbers=[2, 6, 10],
+        reward_win=10,
+        obs_last_action=False,
+        state_last_action=True,
+        is_print=False,
+        print_rew=False,
+        print_steps=1000,
+        seed=None,
     ):
         # Map arguments
         self.print_rew = print_rew
         self.is_print = is_print
         self.print_steps = print_steps
-        self._seed = random.randint(0, 9999)
-        np.random.seed(self._seed)
+        # self._seed = random.randint(0, 9999)
+        __import__('ipdb').set_trace(context=3)
+        np.random.seed(seed)
         self.n_agents = n_agents
-        self.n_states = np.array(state_numbers,
-                                 dtype=np.int)
+        self.n_states = np.array(state_numbers, dtype=np.int_)
 
         # Observations and state
         self.obs_last_action = obs_last_action
@@ -48,7 +49,7 @@ class Join1Env(MultiAgentEnvWrapper):
         self.reward_win = reward_win
 
         # Other
-        self._seed = seed
+        # self._seed = seed
 
         # Actions
         self.n_actions = 3
@@ -69,8 +70,13 @@ class Join1Env(MultiAgentEnvWrapper):
         self.episode_limit = max(state_numbers) + 10
 
         # initialize agents
-        self.state_n = np.array([np.random.randint(low=1, high=self.n_states[i]+1) for i in range(self.n_agents)],
-                                dtype=np.int)
+        self.state_n = np.array(
+            [
+                np.random.randint(low=1, high=self.n_states[i] + 1)
+                for i in range(self.n_agents)
+            ],
+            dtype=np.int_,
+        )
 
     def step(self, actions):
         """Returns reward, terminated, info."""
@@ -79,7 +85,7 @@ class Join1Env(MultiAgentEnvWrapper):
         info = {}
 
         if self.is_print:
-            print('t_steps: %d' % self._episode_steps)
+            print("t_steps: %d" % self._episode_steps)
             print(self.state_n)
             print(actions.cpu().numpy())
 
@@ -89,17 +95,19 @@ class Join1Env(MultiAgentEnvWrapper):
             elif action == 1:
                 self.state_n[agent_i] = max(0, self.state_n[agent_i] - 1)
             elif action == 2:
-                self.state_n[agent_i] = min(self.n_states[agent_i], self.state_n[agent_i] + 1)
+                self.state_n[agent_i] = min(
+                    self.n_states[agent_i], self.state_n[agent_i] + 1
+                )
 
         reward = 0
         terminated = False
-        info['battle_won'] = False
+        info["battle_won"] = False
 
         if (self.state_n == 0).all():
             reward = self.reward_win
             terminated = True
             self.battles_won += 1
-            info['battle_won'] = True
+            info["battle_won"] = True
         elif (self.state_n == 0).any():
             terminated = True
 
@@ -115,8 +123,10 @@ class Join1Env(MultiAgentEnvWrapper):
             if terminated:
                 self.rew_gather.append(reward)
             if self.p_step % self.print_steps == 0:
-                print('steps: %d, average rew: %.3lf' % (self.p_step,
-                                                         float(np.mean(self.rew_gather)) / self.reward_win))
+                print(
+                    "steps: %d, average rew: %.3lf"
+                    % (self.p_step, float(np.mean(self.rew_gather)) / self.reward_win)
+                )
                 self.is_print_once = True
 
         return reward, terminated, info
@@ -157,8 +167,13 @@ class Join1Env(MultiAgentEnvWrapper):
         """Returns initial observations and states."""
         self._episode_steps = 0
         self.last_action = np.zeros((self.n_agents, self.n_actions))
-        self.state_n = np.array([np.random.randint(low=1, high=self.n_states[i]+1) for i in range(self.n_agents)],
-                                dtype=np.int)
+        self.state_n = np.array(
+            [
+                np.random.randint(low=1, high=self.n_states[i] + 1)
+                for i in range(self.n_agents)
+            ],
+            dtype=np.int_,
+        )
 
         return self.get_obs(), self.get_state()
 
@@ -176,18 +191,20 @@ class Join1Env(MultiAgentEnvWrapper):
         pass
 
     def get_env_info(self):
-        env_info = {"state_shape": self.get_state_size(),
-                    "obs_shape": self.get_obs_size(),
-                    "n_actions": self.get_total_actions(),
-                    "n_agents": self.n_agents,
-                    "episode_limit": self.episode_limit}
+        env_info = {
+            "state_shape": self.get_state_size(),
+            "obs_shape": self.get_obs_size(),
+            "n_actions": self.get_total_actions(),
+            "n_agents": self.n_agents,
+            "episode_limit": self.episode_limit,
+        }
         return env_info
 
     def get_stats(self):
         stats = {
             "battles_won": self.battles_won,
             "battles_game": self.battles_game,
-            "win_rate": self.battles_won / self.battles_game
+            "win_rate": self.battles_won / self.battles_game,
         }
         return stats
 
