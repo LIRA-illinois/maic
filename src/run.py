@@ -41,14 +41,14 @@ def run(_run, _config, _log):
         alg_name = args.name
     if str(args.env).startswith("sc2"):
         unique_token = "{}_{}_{}_{}".format(
-            datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"),
+            datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")[:-3],
             alg_name,
             args.env,
             args.env_args["map_name"],
         )
     else:
         unique_token = "{}_{}_{}".format(
-            datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S"), alg_name, args.env
+            datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S.%f")[:-3], alg_name, args.env
         )
 
     args.unique_token = unique_token
