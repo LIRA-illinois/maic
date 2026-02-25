@@ -14,7 +14,7 @@ dependencies = [
     "numpy==2.3.2",
     "protobuf>=3.20.0",
     "pyyaml==6.0.2",
-    "sacred==0.8.2",
+    "sacred==0.8.7",
     "tensorboard==2.20.0",
     "tensorboard-logger",
     "torch==2.6.0",
