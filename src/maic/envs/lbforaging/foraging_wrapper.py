@@ -74,9 +74,9 @@ class ForagingEnvWrapper(MultiAgentEnvWrapper):
             print("current position: ", file=stderr)
             print(self.env.unwrapped.get_players_position(), file=stderr)
             print("choose actions: ", file=stderr)
-            print(actions.cpu().numpy().tolist(), file=stderr)
+            print(actions.tolist(), file=stderr)
             position_record = self.env.unwrapped.get_players_position()
-            action_record = actions.cpu().numpy().tolist()
+            action_record = actions.tolist()
             env_info = {"position": position_record, "action": action_record}
             import pickle
 
@@ -101,7 +101,7 @@ class ForagingEnvWrapper(MultiAgentEnvWrapper):
                 dpi=600,
             )
 
-        self.obs, rewards, dones, info = self.env.step(actions.cpu().numpy())
+        self.obs, rewards, dones, info = self.env.step(actions)
 
         self.agent_score += rewards
 

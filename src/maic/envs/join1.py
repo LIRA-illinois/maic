@@ -36,7 +36,6 @@ class Join1Env(MultiAgentEnvWrapper):
         self.is_print = is_print
         self.print_steps = print_steps
         # self._seed = random.randint(0, 9999)
-        __import__('ipdb').set_trace(context=3)
         np.random.seed(seed)
         self.n_agents = n_agents
         self.n_states = np.array(state_numbers, dtype=np.int_)
@@ -87,7 +86,7 @@ class Join1Env(MultiAgentEnvWrapper):
         if self.is_print:
             print("t_steps: %d" % self._episode_steps)
             print(self.state_n)
-            print(actions.cpu().numpy())
+            print(actions)
 
         for agent_i, action in enumerate(actions):
             if action == 0:

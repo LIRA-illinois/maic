@@ -76,6 +76,8 @@ class EpisodeRunner:
             actions = self.mac.select_actions(
                 self.batch, t_ep=self.t, t_env=self.t_env, test_mode=test_mode
             )
+            # following parallel runner
+            actions = actions.cpu().numpy()
 
             reward, terminated, env_info = self.env.step(actions[0])
 
