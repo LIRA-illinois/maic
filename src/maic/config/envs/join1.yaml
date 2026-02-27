@@ -9,6 +9,8 @@ env_args:
   print_rew: False
   is_print: False
   print_steps: 1000
+  max_episode_steps: 20 # max(state_numbers) + 10
+
 
 learner_log_interval: 10000
 log_interval: 10000

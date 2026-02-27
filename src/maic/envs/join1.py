@@ -30,6 +30,7 @@ class Join1Env(MultiAgentEnvWrapper):
         print_rew=False,
         print_steps=1000,
         seed=None,
+        max_episode_steps=None,
     ):
         # Map arguments
         self.print_rew = print_rew
@@ -66,7 +67,8 @@ class Join1Env(MultiAgentEnvWrapper):
 
         self.last_action = np.zeros((self.n_agents, self.n_actions))
 
-        self.episode_limit = max(state_numbers) + 10
+        # self.episode_limit = max(state_numbers) + 10
+        self.episode_limit = max_episode_steps
 
         # initialize agents
         self.state_n = np.array(
@@ -162,7 +164,7 @@ class Join1Env(MultiAgentEnvWrapper):
         """Returns the total number of actions an agent could ever take."""
         return self.n_actions
 
-    def reset(self):
+    def reset(self, seed=None):
         """Returns initial observations and states."""
         self._episode_steps = 0
         self.last_action = np.zeros((self.n_agents, self.n_actions))
