@@ -5,6 +5,7 @@ results/
 output/
 plotting/
 poetry.lock
+tmp/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
