@@ -1,8 +1,10 @@
+from typing import Any
 from functools import partial
 import numpy as np
 import gymnasium as gym
+from gymnasium.utils.env_checker import check_env
 
-from maic.envs import REGISTRY as env_REGISTRY
+from maic.envs import REGISTRY as env_REGISTRY, register_envs
 from maic.components.episode_buffer import EpisodeBatch
 
 
@@ -14,8 +16,22 @@ class EpisodeRunner:
         self.batch_size = self.args.batch_size_run
         assert self.batch_size == 1
 
-        self.env = env_REGISTRY[self.args.env](**self.args.env_args)
-        self.episode_limit = self.env.episode_limit
+        self.episode_limit: int = self.args.env_args["max_episode_steps"]
+
+        register_envs()
+        if self.args.env in env_REGISTRY:
+            self.env = env_REGISTRY[self.args.env](**self.args.env_args)
+        else:
+            self.env: gym.Env = gym.make(self.args.env, **self.args.env_args)
+
+        # initialize the env's RNG
+        self.env.reset(seed=self.args.seed)
+
+        try:
+            check_env(self.env.unwrapped)
+        except Exception as e:
+            print(f"Env has issues: {e}")
+
         self.t = 0
 
         self.t_env = 0
@@ -40,14 +56,26 @@ class EpisodeRunner:
         )
         self.mac = mac
 
-    def get_env_info(self):
-        return self.env.get_env_info()
+    def get_env_info(self) -> dict[str, Any]:
+        info: dict = self.env.unwrapped.get_env_info()
+        info["episode_limit"] = self.episode_limit
+
+        return info
 
     def save_replay(self):
         self.env.save_replay()
 
     def close_env(self):
         self.env.close()
+
+    def get_state(self):
+        return self.env.unwrapped.get_state()
+
+    def get_avail_actions(self):
+        return self.env.unwrapped.get_avail_actions()
+
+    def get_obs(self):
+        return self.env.unwrapped.get_obs()
 
     def reset(self):
         self.batch = self.new_batch()
@@ -58,44 +86,43 @@ class EpisodeRunner:
         self.reset()
 
         terminated = False
+        truncated = False
         episode_return = 0
         self.mac.init_hidden(batch_size=self.batch_size)
 
-        while not terminated:
-
+        while not (terminated or truncated):
             pre_transition_data = {
-                "state": [self.env.get_state()],
-                "avail_actions": [self.env.get_avail_actions()],
-                "obs": [self.env.get_obs()],
+                "state": [self.get_state()],
+                "avail_actions": [self.get_avail_actions()],
+                "obs": [self.get_obs()],
             }
 
             self.batch.update(pre_transition_data, ts=self.t)
 
             # Pass the entire batch of experiences up till now to the agents
             # Receive the actions for each agent at this timestep in a batch of size 1
-            actions = self.mac.select_actions(
-                self.batch, t_ep=self.t, t_env=self.t_env, test_mode=test_mode
-            )
-            # following parallel runner
+            actions = self.mac.select_actions(self.batch, t_ep=self.t, t_env=self.t_env, test_mode=test_mode)
+
+            # following the format from the parallel episode runner
             actions = actions.cpu().numpy()
 
-            reward, terminated, env_info = self.env.step(actions[0])
+            _, reward, terminated, truncated, env_info = self.env.step(actions[0])
 
             episode_return += reward
 
             post_transition_data = {
                 "actions": actions,
                 "reward": [(reward,)],
-                "terminated": [(terminated != env_info.get("episode_limit", False),)],
+                "terminated": [(terminated != env_info.get("max_episode_steps", False),)],
             }
 
             self.batch.update(post_transition_data, ts=self.t)
             self.t += 1
 
         last_data = {
-            "state": [self.env.get_state()],
-            "avail_actions": [self.env.get_avail_actions()],
-            "obs": [self.env.get_obs()],
+            "state": [self.get_state()],
+            "avail_actions": [self.get_avail_actions()],
+            "obs": [self.get_obs()],
         }
         self.batch.update(last_data, ts=self.t)
 
