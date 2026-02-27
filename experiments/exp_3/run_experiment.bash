@@ -22,10 +22,10 @@ envs=(
 
 # same order as the env list
 params=(
-    "with test_interval=25000 t_max=1000000 test_nepisode=50"
-    "with test_interval=25000 t_max=1000000 test_nepisode=50 env_args.n_agents=2 env_args.state_numbers=[2,2,2]"
-    "with test_interval=25000 t_max=1000000 test_nepisode=50"
-    "with test_interval=25000 t_max=1000000 test_nepisode=50 env_args.n_agents=2 env_args.state_numbers=[2,2,2]"
+    "with test_interval=50000 t_max=1000000 test_nepisode=50"
+    "with test_interval=50000 t_max=1000000 test_nepisode=50 env_args.n_agents=2 env_args.state_numbers=[2,2,2]"
+    "with test_interval=50000 t_max=1000000 test_nepisode=50"
+    "with test_interval=50000 t_max=1000000 test_nepisode=50 env_args.n_agents=2 env_args.state_numbers=[2,2,2]"
 )
 
 # the code runs every seed within each scenario
