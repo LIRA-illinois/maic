@@ -24,13 +24,14 @@ class EpisodeRunner:
         else:
             self.env: gym.Env = gym.make(self.args.env, **self.args.env_args)
 
+            # run basic env checks to follow the Gymnasium API
+            try:
+                check_env(self.env.unwrapped)
+            except Exception as e:
+                print(f"Env has issues: {e}")
+
         # initialize the env's RNG
         self.env.reset(seed=self.args.seed)
-
-        try:
-            check_env(self.env.unwrapped)
-        except Exception as e:
-            print(f"Env has issues: {e}")
 
         self.t = 0
 
@@ -57,7 +58,11 @@ class EpisodeRunner:
         self.mac = mac
 
     def get_env_info(self) -> dict[str, Any]:
-        info: dict = self.env.unwrapped.get_env_info()
+        if hasattr(self.env, "unwrapped"):
+            info: dict = self.env.unwrapped.get_env_info()
+        else:
+            info: dict = self.env.get_env_info()
+
         info["episode_limit"] = self.episode_limit
 
         return info
@@ -69,13 +74,22 @@ class EpisodeRunner:
         self.env.close()
 
     def get_state(self):
-        return self.env.unwrapped.get_state()
+        if hasattr(self.env, "unwrapped"):
+            return self.env.unwrapped.get_state()
+        else:
+            return self.env.get_state()
 
     def get_avail_actions(self):
-        return self.env.unwrapped.get_avail_actions()
+        if hasattr(self.env, "unwrapped"):
+            return self.env.unwrapped.get_avail_actions()
+        else:
+            return self.env.get_avail_actions()
 
     def get_obs(self):
-        return self.env.unwrapped.get_obs()
+        if hasattr(self.env, "unwrapped"):
+            return self.env.unwrapped.get_obs()
+        else:
+            return self.env.get_obs()
 
     def reset(self):
         self.batch = self.new_batch()
@@ -106,7 +120,11 @@ class EpisodeRunner:
             # following the format from the parallel episode runner
             actions = actions.cpu().numpy()
 
-            _, reward, terminated, truncated, env_info = self.env.step(actions[0])
+            if hasattr(self.env, "unwrapped"):
+                _, reward, terminated, truncated, env_info = self.env.step(actions[0])
+            else:
+                # only for the non-Gymnasium version of the env
+                reward, terminated, env_info = self.env.step(actions[0])
 
             episode_return += reward
 
