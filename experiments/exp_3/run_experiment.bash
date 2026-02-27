@@ -80,6 +80,7 @@ for scenario_idx in "${!scenarios[@]}"; do
 done
 
 # run all the commands
-# bash $run_path
+bash $run_path
 
 # delete the commands file (optional)
+# bash rm -r $run_path
