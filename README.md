@@ -19,16 +19,35 @@ This project assumes the use of Ubuntu 22.04 as the operating system. Some comma
     - Git (for project code version control)
         - [Installation instructions](https://git-scm.com/downloads)
 
+
+1. Clone this repo and any submodules
+
+    ```[bash]
+    git clone --recurse-submodules https://github.com/LIRA-illinois/maic.git
+    ```
+
 1. `cd` to the project root and install the project's dependencies
-    - `pip install poetry`
-    - `poetry config --local virtualenvs.in-project true`
-        - Makes the virtual environment install in this project's root instead of some random location on your computer.
-    - `poetry lock`
-        - NOTE: If you do not have the right version of Python on your computer, this step will fail and you will need to install it using, for example, the deadsnakes repo.
-    - `poetry install`
-    - `source .venv/bin/activate`
-        - Activates the venv
-    - Run this `PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python`
+
+    ```[bash]
+    pip install poetry
+
+    # Makes the virtual environment install in this project's root instead of some random location on your computer
+    poetry config --local virtualenvs.in-project true
+
+    # NOTE: If you do not have the right version of Python on your computer, poetry lock will fail and you will need to install it using, for example, the deadsnakes repo.
+    poetry lock
+
+    poetry install
+
+    # Activate the venv
+    source .venv/bin/activate
+
+    # Install the lb-foraging package in editable mode
+    pip install -e src/cm_extension/environments/gym-multigrid
+
+    # Run this to make sure the `protobuf` package works
+    PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
+    ```
 
 
 ## Run an experiment
