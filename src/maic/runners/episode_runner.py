@@ -4,7 +4,7 @@ import numpy as np
 import gymnasium as gym
 from gymnasium.utils.env_checker import check_env
 
-from maic.envs import REGISTRY as env_REGISTRY, register_envs
+from maic.envs import REGISTRY as env_REGISTRY, register_envs, get_env_id
 from maic.components.episode_buffer import EpisodeBatch
 
 
@@ -16,22 +16,31 @@ class EpisodeRunner:
         self.batch_size = self.args.batch_size_run
         assert self.batch_size == 1
 
-        self.episode_limit: int = self.args.env_args["max_episode_steps"]
+        self.episode_limit: int = self.args.env_args.get("max_episode_steps")
 
         register_envs()
         if self.args.env in env_REGISTRY:
             self.env = env_REGISTRY[self.args.env](**self.args.env_args)
         else:
-            self.env: gym.Env = gym.make(self.args.env, **self.args.env_args)
 
-            # run basic env checks to follow the Gymnasium API
-            try:
-                check_env(self.env.unwrapped)
-            except Exception as e:
-                print(f"Env has issues: {e}")
+            if self.args.env == "foraging":
+                # this env already has all its params defined when registered
+                env_id = get_env_id(env=self.args.env, env_args=self.args.env_args)
+                self.args.env = env_id
+                self.env: gym.Env = gym.make(self.args.env)
 
-        # initialize the env's RNG
+            else:
+                self.env: gym.Env = gym.make(self.args.env, **self.args.env_args)
+
+        # initialize the env's PRNG
         self.env.reset(seed=self.args.seed)
+
+        # run basic env checks to follow the Gymnasium API
+        try:
+            check_env(self.env.unwrapped, skip_render_check=True)
+        except Exception as e:
+            print(f"Env has issues: {e}")
+
 
         self.t = 0
 
@@ -93,6 +102,7 @@ class EpisodeRunner:
 
     def reset(self):
         self.batch = self.new_batch()
+        # do not use seed in calling reset() here, doing that will reset the PRNG to its initial state
         self.env.reset()
         self.t = 0
 
@@ -115,13 +125,16 @@ class EpisodeRunner:
 
             # Pass the entire batch of experiences up till now to the agents
             # Receive the actions for each agent at this timestep in a batch of size 1
-            actions = self.mac.select_actions(self.batch, t_ep=self.t, t_env=self.t_env, test_mode=test_mode)
+            actions = self.mac.select_actions(
+                self.batch, t_ep=self.t, t_env=self.t_env, test_mode=test_mode
+            )
 
             # following the format from the parallel episode runner
             actions = actions.cpu().numpy()
 
             if hasattr(self.env, "unwrapped"):
                 _, reward, terminated, truncated, env_info = self.env.step(actions[0])
+                terminated = bool(terminated)
             else:
                 # only for the non-Gymnasium version of the env
                 reward, terminated, env_info = self.env.step(actions[0])
@@ -131,10 +144,13 @@ class EpisodeRunner:
             post_transition_data = {
                 "actions": actions,
                 "reward": [(reward,)],
-                "terminated": [(terminated != env_info.get("max_episode_steps", False),)],
+                "terminated": [
+                    (terminated != env_info.get("episode_limit", False),)
+                ],
             }
 
             self.batch.update(post_transition_data, ts=self.t)
+
             self.t += 1
 
         last_data = {
