@@ -43,7 +43,7 @@ This project assumes the use of Ubuntu 22.04 as the operating system. Some comma
     source .venv/bin/activate
 
     # Install the lb-foraging package in editable mode
-    pip install -e src/cm_extension/environments/gym-multigrid
+    pip install -e src/maic/envs/lb-foraging
 
     # Run this to make sure the `protobuf` package works
     PROTOCOL_BUFFERS_PYTHON_IMPLEMENTATION=python
