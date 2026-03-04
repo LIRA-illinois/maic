@@ -5,7 +5,7 @@ import torch.nn.functional as F
 import torch.distributions as D
 from torch.distributions import kl_divergence
 
-
+@th.compile
 class MAICAgent(nn.Module):
     def __init__(self, input_shape, args):
         super(MAICAgent, self).__init__()
@@ -34,7 +34,7 @@ class MAICAgent(nn.Module):
         self.fc1 = nn.Linear(input_shape, args.rnn_hidden_dim)
         self.rnn = nn.GRUCell(args.rnn_hidden_dim, args.rnn_hidden_dim)
         self.fc2 = nn.Linear(args.rnn_hidden_dim, args.n_actions)
-        
+
         self.msg_net = nn.Sequential(
             nn.Linear(args.rnn_hidden_dim + args.latent_dim, NN_HIDDEN_SIZE),
             activation_func,
@@ -43,10 +43,10 @@ class MAICAgent(nn.Module):
 
         self.w_query = nn.Linear(args.rnn_hidden_dim, args.attention_dim)
         self.w_key = nn.Linear(args.latent_dim, args.attention_dim)
-        
+
     def init_hidden(self):
         return self.fc1.weight.new(1, self.args.rnn_hidden_dim).zero_()
-    
+
     def forward(self, inputs, hidden_state, bs, test_mode=False, **kwargs):
         x = F.relu(self.fc1(inputs))
         h_in = hidden_state.reshape(-1, self.args.rnn_hidden_dim)
@@ -70,7 +70,7 @@ class MAICAgent(nn.Module):
 
         h_repeat = h.view(bs, self.n_agents, -1).repeat(1, self.n_agents, 1).view(bs * self.n_agents * self.n_agents, -1)
         msg = self.msg_net(th.cat([h_repeat, latent], dim=-1)).view(bs, self.n_agents, self.n_agents, self.n_actions)
-        
+
         query = self.w_query(h).unsqueeze(1)
         key = self.w_key(latent).reshape(bs * self.n_agents, self.n_agents, -1).transpose(1, 2)
         alpha = th.bmm(query / (self.args.attention_dim ** (1/2)), key).view(bs, self.n_agents, self.n_agents)
@@ -101,7 +101,7 @@ class MAICAgent(nn.Module):
         latent_embed = latent_embed.view(bs * self.n_agents, 2, self.n_agents, self.latent_dim)
         g1 = D.Normal(latent_embed[:, 0, :, :].reshape(-1, self.latent_dim), latent_embed[:, 1, :, :].reshape(-1, self.latent_dim) ** (1/2))
         hi = h.view(bs, self.n_agents, 1, -1).repeat(1, 1, self.n_agents, 1).view(bs * self.n_agents * self.n_agents, -1)
-        
+
         selected_action = th.max(q, dim=1)[1].unsqueeze(-1)
         one_hot_a = th.zeros(selected_action.shape[0], self.n_actions).to(self.args.device).scatter(1, selected_action, 1)
         one_hot_a = one_hot_a.view(bs, 1, self.n_agents, -1).repeat(1, self.n_agents, 1, 1)
