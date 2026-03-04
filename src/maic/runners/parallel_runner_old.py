@@ -1,63 +1,72 @@
+from functools import partial
 from multiprocessing import Pipe, Process
 import numpy as np
-import gymnasium as gym
 
-from .runner import Runner, step, get_state, get_avail_actions, get_obs
+from maic.components.episode_buffer import EpisodeBatch
+from maic.envs import REGISTRY as env_REGISTRY
 
 
 # Based (very) heavily on SubprocVecEnv from OpenAI Baselines
 # https://github.com/openai/baselines/blob/master/baselines/common/vec_env/subproc_vec_env.py
-class ParallelRunner(Runner):
-    """class to run multiple episodes in parallel"""
+class ParallelRunner:
 
     def __init__(self, args, logger):
-        super().__init__(args, logger)
+        self.args = args
+        self.logger = logger
+        self.batch_size = self.args.batch_size_run
 
         # Make subprocesses for the envs
         self.parent_conns, self.worker_conns = zip(
             *[Pipe() for _ in range(self.batch_size)]
         )
-
-        # env_args_list: list[dict] = [
-        #     self.args.env_args.copy() for _ in range(self.batch_size)
-        # ]
-
-        self.processes: list[Process] = []
-        for process_idx, worker_conn in enumerate(self.worker_conns):
-        # for env_args, worker_conn in zip(env_args_list, self.worker_conns):
-            # each process gets its a separate instance of the env
-            env = self.build_env()
-
-            process = Process(
+        env_fn = env_REGISTRY[self.args.env]
+        self.ps = [
+            Process(
                 target=env_worker,
                 args=(
                     worker_conn,
-                    process_idx,
-                    env,
-                    self.args.seed,
+                    CloudpickleWrapper(partial(env_fn, **self.args.env_args)),
                 ),
             )
+            for worker_conn in self.worker_conns
+        ]
 
-            self.processes.append(process)
-
-        for p in self.processes:
+        for p in self.ps:
             p.daemon = True
             p.start()
 
-        # initialize each env's PRNG
-        self.set_env_seed()
+        self.parent_conns[0].send(("get_env_info", None))
+        self.env_info = self.parent_conns[0].recv()
+        self.episode_limit = self.env_info["episode_limit"]
 
-    def set_env_seed(self):
-        for i, parent_conn in enumerate(self.parent_conns):
-            print(i)
-            parent_conn.send(("set_env_seed", None))
+        self.t = 0
+
+        self.t_env = 0
+
+        self.train_returns = []
+        self.test_returns = []
+        self.train_stats = {}
+        self.test_stats = {}
+
+        self.log_train_stats_t = -100000
+
+    def setup(self, scheme, groups, preprocess, mac):
+        self.new_batch = partial(
+            EpisodeBatch,
+            scheme,
+            groups,
+            self.batch_size,
+            self.episode_limit + 1,
+            preprocess=preprocess,
+            device=self.args.device,
+        )
+        self.mac = mac
+        self.scheme = scheme
+        self.groups = groups
+        self.preprocess = preprocess
 
     def get_env_info(self):
-        self.parent_conns[0].send(("get_env_info", None))
-        info = self.parent_conns[0].recv()
-        info["episode_limit"] = self.episode_limit
-
-        return info
+        return self.env_info
 
     def save_replay(self):
         pass
@@ -67,9 +76,7 @@ class ParallelRunner(Runner):
             parent_conn.send(("close", None))
 
     def reset(self):
-        self._reset()
-
-        self.env_steps_this_run = 0
+        self.batch = self.new_batch()
 
         # Reset the envs
         for parent_conn in self.parent_conns:
@@ -85,9 +92,13 @@ class ParallelRunner(Runner):
 
         self.batch.update(pre_transition_data, ts=0)
 
+        self.t = 0
+        self.env_steps_this_run = 0
+
     def run(self, test_mode=False):
         self.reset()
 
+        all_terminated = False
         episode_returns = [0 for _ in range(self.batch_size)]
         episode_lengths = [0 for _ in range(self.batch_size)]
         self.mac.init_hidden(batch_size=self.batch_size)
@@ -100,6 +111,7 @@ class ParallelRunner(Runner):
         )  # may store extra stats like battle won. this is filled in ORDER OF TERMINATION
 
         while True:
+
             # Pass the entire batch of experiences up till now to the agents
             # Receive the actions for each agent at this timestep in a batch for each un-terminated env
             actions = self.mac.select_actions(
@@ -109,33 +121,30 @@ class ParallelRunner(Runner):
                 bs=envs_not_terminated,
                 test_mode=test_mode,
             )
+            cpu_actions = actions.cpu().numpy()
 
-            # ensure this is size (batch_size_run, 1, n_agents)
-            actions = np.expand_dims(actions.cpu().numpy(), 1)
-
+            # Update the actions taken
+            actions_chosen = {"actions": np.expand_dims(cpu_actions, 1)}
             self.batch.update(
-                {"actions": actions},
-                bs=envs_not_terminated,
-                ts=self.t,
-                mark_filled=False,
+                actions_chosen, bs=envs_not_terminated, ts=self.t, mark_filled=False
             )
 
             # Send actions to each env
             action_idx = 0
             for idx, parent_conn in enumerate(self.parent_conns):
-                # We produced actions for this env
-                if idx in envs_not_terminated:
-                    # Only send the actions to the env if it hasn't terminated
-                    if not terminated[idx]:
-                        parent_conn.send(("step", actions[action_idx]))
+                if idx in envs_not_terminated:  # We produced actions for this env
+                    if not terminated[
+                        idx
+                    ]:  # Only send the actions to the env if it hasn't terminated
+                        parent_conn.send(("step", cpu_actions[action_idx]))
                     action_idx += 1  # actions is not a list over every env
 
             # Update envs_not_terminated
-            envs_not_terminated: list[int] = [
+            envs_not_terminated = [
                 b_idx for b_idx, termed in enumerate(terminated) if not termed
             ]
-
-            if all(terminated):
+            all_terminated = all(terminated)
+            if all_terminated:
                 break
 
             # Post step data we will insert for the current timestep
@@ -241,80 +250,66 @@ class ParallelRunner(Runner):
         stats.clear()
 
 
-def env_worker(remote, process_idx: int, env: gym.Env, seed: int):
-
+def env_worker(remote, env_fn):
+    # Make environment
+    env = env_fn.x()
     while True:
         cmd, data = remote.recv()
+        if cmd == "step":
+            actions = data
+            # Take a step in the environment
+            reward, terminated, env_info = env.step(actions)
+            # Return the observations, avail_actions and state to make the next action
+            state = env.get_state()
+            avail_actions = env.get_avail_actions()
+            obs = env.get_obs()
+            remote.send(
+                {
+                    # Data for the next timestep needed to pick an action
+                    "state": state,
+                    "avail_actions": avail_actions,
+                    "obs": obs,
+                    # Rest of the data for the current timestep
+                    "reward": reward,
+                    "terminated": terminated,
+                    "info": env_info,
+                }
+            )
+        elif cmd == "reset":
+            env.reset()
+            remote.send(
+                {
+                    "state": env.get_state(),
+                    "avail_actions": env.get_avail_actions(),
+                    "obs": env.get_obs(),
+                }
+            )
+        elif cmd == "close":
+            env.close()
+            remote.close()
+            break
+        elif cmd == "get_env_info":
+            remote.send(env.get_env_info())
+        elif cmd == "get_stats":
+            remote.send(env.get_stats())
+        else:
+            raise NotImplementedError
 
-        match cmd:
-            case "step":
-                actions = data
-                # Take a step in the environment
-                _, reward, terminated, truncated, env_info = step(actions, env)
 
-                # "terminated" in the runner's scope is equivalent to "terminated or truncated" in env_worker's scope
-                terminated = terminated or truncated
+class CloudpickleWrapper:
+    """
+    Uses cloudpickle to serialize contents (otherwise multiprocessing tries to use pickle)
+    """
 
-                # Return the observations, avail_actions and state to make the next action
-                state = get_state(env)
-                avail_actions = get_avail_actions(env)
-                obs = get_obs(env)
+    def __init__(self, x):
+        self.x = x
 
-                remote.send(
-                    {
-                        # Data for the next timestep needed to pick an action
-                        "state": state,
-                        "avail_actions": avail_actions,
-                        "obs": obs,
-                        # Rest of the data for the current timestep
-                        "reward": reward,
-                        "terminated": terminated,
-                        "info": env_info,
-                    }
-                )
+    def __getstate__(self):
+        import cloudpickle
 
-            case "set_env_seed":
-                print(f"process {process_idx} setting env seed to {seed}")
-                env.reset(seed=seed)
+        return cloudpickle.dumps(self.x)
 
-            case "reset":
-                # print("resetting env")
-                env.reset()
-                # state = get_state(env)
+    def __setstate__(self, ob):
+        import pickle
 
-                remote.send(
-                    {
-                        "state": get_state(env),
-                        "avail_actions": get_avail_actions(env),
-                        "obs": get_obs(env),
-                    }
-                )
-
-            case "close":
-                env.close()
-                remote.close()
-                break
-
-            case "get_env_info":
-                if hasattr(env, "unwrapped"):
-                    info: dict = env.unwrapped.get_env_info()
-                else:
-                    info: dict = env.get_env_info()
-
-                remote.send(info)
-
-            case "get_stats":
-                # some envs do not have a get_stats method
-                if hasattr(env, "get_stats") and callable(
-                    getattr(env, "get_stats")
-                ):
-                    if hasattr(env, "unwrapped"):
-                        stats: dict = env.unwrapped.get_stats()
-                    else:
-                        stats: dict = env.get_env_info()
-                else:
-                    stats = {}
-                remote.send(stats)
-
-            case _:
-                raise NotImplementedError
+        self.x = pickle.loads(ob)
