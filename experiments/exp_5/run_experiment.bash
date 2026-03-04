@@ -11,26 +11,41 @@ scenarios=(
     "sc_2"
     "sc_3"
     "sc_4"
+    "sc_5"
+    "sc_6"
+    "sc_7"
+    "sc_8"
+    "sc_9"
     )
 
 envs=(
-    "foraging"
-    "foraging"
+    "foraging-v2"
+    "foraging-v2"
+    "foraging-v2"
+    "foraging-v2"
+    "foraging-v2"
+    "foraging-v2"
+    "foraging-v2"
     "foraging-v2"
     "foraging-v2"
 )
 
 # same order as the env list
 params=(
-    "with test_interval=50000 t_max=2000000 test_nepisode=40 env_args.field_size=10 env_args.players=4"
-    "with test_interval=50000 t_max=2000000 test_nepisode=40 env_args.field_size=4 env_args.players=3"
-    "with test_interval=50000 t_max=2000000 test_nepisode=40 env_args.field_size=10 env_args.players=4"
-    "with test_interval=50000 t_max=2000000 test_nepisode=40 env_args.field_size=4 env_args.players=3"
+    "with test_interval=50000 t_max=2000000 test_nepisode=40 env_args.field_size=10 env_args.players=4 runner=parallel batch_size_run=1 batch_size=32"
+    "with test_interval=50000 t_max=2000000 test_nepisode=40 env_args.field_size=10 env_args.players=4 runner=parallel batch_size_run=2 batch_size=64"
+    "with test_interval=50000 t_max=2000000 test_nepisode=40 env_args.field_size=10 env_args.players=4 runner=parallel batch_size_run=5 batch_size=160"
+    "with test_interval=50000 t_max=2000000 test_nepisode=40 env_args.field_size=10 env_args.players=4 runner=parallel batch_size_run=10 batch_size=320"
+    "with test_interval=50000 t_max=2000000 test_nepisode=40 env_args.field_size=10 env_args.players=4 runner=parallel batch_size_run=20 batch_size=640"
+    "with test_interval=50000 t_max=2000000 test_nepisode=40 env_args.field_size=10 env_args.players=4 runner=parallel batch_size_run=40 batch_size=1280"
+    # it may also be the case that you need larger batch sizes for smaller number of added eps, so instead of batch_size_run*32, set batch_size=2*batch_size_run*32
+    "with test_interval=50000 t_max=2000000 test_nepisode=40 env_args.field_size=10 env_args.players=4 runner=parallel batch_size_run=5 batch_size=320"
+    "with test_interval=50000 t_max=2000000 test_nepisode=40 env_args.field_size=10 env_args.players=4 runner=parallel batch_size_run=10 batch_size=640"
+    "with test_interval=50000 t_max=2000000 test_nepisode=40 env_args.field_size=10 env_args.players=4 runner=parallel batch_size_run=20 batch_size=1280"
 )
 
 # the code runs every seed within each scenario
-seeds=(2289)
-# seeds=(0 2289 3608)
+seeds=(0 2289 3608)
 
 ###########################
 # get parent directory for exp name
