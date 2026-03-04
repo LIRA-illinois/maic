@@ -103,12 +103,15 @@ class EpisodeBatch:
     def to(self, device):
         for k, v in self.data.transition_data.items():
             self.data.transition_data[k] = v.to(device)
+
         for k, v in self.data.episode_data.items():
             self.data.episode_data[k] = v.to(device)
+
         self.device = device
 
     def update(self, data, bs=slice(None), ts=slice(None), mark_filled=True):
         slices = self._parse_slices((bs, ts))
+
         for k, v in data.items():
             if k in self.data.transition_data:
                 target = self.data.transition_data
@@ -116,14 +119,20 @@ class EpisodeBatch:
                     target["filled"][slices] = 1
                     mark_filled = False
                 _slices = slices
+
             elif k in self.data.episode_data:
                 target = self.data.episode_data
                 _slices = slices[0]
             else:
                 raise KeyError("{} not found in transition or episode data".format(k))
 
+            ######################
+            # """
             dtype = self.scheme[k].get("dtype", th.float32)
+
+            # this operation on its own can be kinda slow
             v = th.tensor(v, dtype=dtype, device=self.device)
+
             self._check_safe_view(v, target[k][_slices])
             target[k][_slices] = v.view_as(target[k][_slices])
 
@@ -133,6 +142,32 @@ class EpisodeBatch:
                 for transform in self.preprocess[k][1]:
                     v = transform.transform(v)
                 target[new_k][_slices] = v.view_as(target[new_k][_slices])
+            # """
+            ######################
+            """
+            # doing torch.from_numpy is very fast compared to torch.tensor since it uses the same memory instead of creating a new object at a different location in memory
+            # should also try to avoid doing lists of lists to torch tensors, instead convert to a stacked np array first then do torch.from_numpy
+            if isinstance(v, (list, np.ndarray)):
+                if isinstance(v, list):
+                    v = np.array(v)
+                v_tensor = th.from_numpy(v)
+
+            else:
+                # it's already a torch tensor, no need to update
+                v_tensor = v
+
+            # there's no need to add v to the device since that happens anyways when you do target[k][_slices] = ...
+            self._check_safe_view(v_tensor, target[k][_slices])
+            target[k][_slices] = v_tensor.view_as(target[k][_slices])
+
+            if k in self.preprocess:
+                new_k = self.preprocess[k][0]
+                v_tensor = target[k][_slices]
+                for transform in self.preprocess[k][1]:
+                    v_tensor = transform.transform(v_tensor)
+                target[new_k][_slices] = v_tensor.view_as(target[new_k][_slices])
+            """
+            ######################
 
     def _check_safe_view(self, v, dest):
         idx = len(v.shape) - 1
@@ -247,6 +282,58 @@ class EpisodeBatch:
             self.batch_size, self.max_seq_length, self.scheme.keys(), self.groups.keys()
         )
 
+    """
+    abandoned attempt at parallelizing update() to speed it up since it's one of the most-called methods in the training loop and takes up a large amount of the overall run time
+    - unfortunately, Sacred doesn't like to have parallelization in it, so that causes issues and makes it run very slow compared to normal
+    - also, idk if the target updating is working correctly in this implementation
+    - dropping this for now
+
+    # need to put this at start of run_sequential() for this to work
+    import multiprocessing as mp
+    mp.set_start_method("spawn")
+
+    def update(self, data, bs=slice(None), ts=slice(None), mark_filled=True):
+
+        slices = self._parse_slices((bs, ts))
+        args_list = []
+        for k, v in data.items():
+            if k in self.data.transition_data:
+                target = self.data.transition_data
+                if mark_filled:
+                    target["filled"][slices] = 1
+                    mark_filled = False
+                _slices = slices
+
+            elif k in self.data.episode_data:
+                target = self.data.episode_data
+                _slices = slices[0]
+            else:
+                raise KeyError("{} not found in transition or episode data".format(k))
+
+            args_list.append((target, k, v, _slices))
+
+        # put all the targets into lists, then do their updating in parallel
+        with mp.Pool() as pool:
+            pool.map(self.update_target_helper, args_list)
+
+    def update_target_parallel(self, target, k, v, _slices):
+        dtype = self.scheme[k].get("dtype", th.float32)
+        v = th.tensor(v, dtype=dtype, device=self.device)
+
+        self._check_safe_view(v, target[k][_slices])
+        target[k][_slices] = v.view_as(target[k][_slices])
+
+        if k in self.preprocess:
+            new_k = self.preprocess[k][0]
+            v = target[k][_slices]
+            for transform in self.preprocess[k][1]:
+                v = transform.transform(v)
+            target[new_k][_slices] = v.view_as(target[new_k][_slices])
+
+    def update_target_helper(self, args):
+        return self.update_target_parallel(*args)
+    """
+
 
 class ReplayBuffer(EpisodeBatch):
     def __init__(
@@ -255,7 +342,6 @@ class ReplayBuffer(EpisodeBatch):
         groups,
         buffer_size,
         max_seq_length,
-        burn_in_period,
         preprocess=None,
         device="cpu",
     ):
@@ -271,7 +357,6 @@ class ReplayBuffer(EpisodeBatch):
         self.buffer_index = 0
         self.episodes_in_buffer = 0
         self.is_from_start = True
-        self.burn_in_period = burn_in_period
 
     def insert_episode_batch(self, ep_batch):
         if self.buffer_index + ep_batch.batch_size <= self.buffer_size:
@@ -295,7 +380,7 @@ class ReplayBuffer(EpisodeBatch):
             self.insert_episode_batch(ep_batch[buffer_left:, :])
 
     def can_sample(self, batch_size):
-        return self.episodes_in_buffer >= self.burn_in_period
+        return self.episodes_in_buffer >= batch_size
 
     def sample(self, batch_size):
         assert self.can_sample(batch_size)
