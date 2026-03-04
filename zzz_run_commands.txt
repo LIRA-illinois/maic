@@ -6,3 +6,21 @@ python3 src/main.py --config=maic --env-config=join1
 
 python3 src/main.py --config=maic --env-config=foraging-v2
 
+
+
+# testing speedup methods
+python3 src/main.py --config=maic --env-config=join1-v0 with test_interval=200 t_max=200 log_interval=200 test_nepisode=50 seed=0 exp_name=exp_speedup_sc_1 runner=episode batch_size_run=1
+
+
+# parallel runner
+## if you run N episodes, you then sample the buffer N times to perform N training steps
+## or perform 1 training step with batch size of batch_size*N (32*N in this case)
+python3 src/main.py --config=maic --env-config=join1-v0 with test_interval=200 t_max=1000 log_interval=100 test_nepisode=50 seed=0 exp_name=exp_speedup_sc_1 runner=parallel batch_size_run=25 batch_size=800 buffer_size=5000
+
+python3 src/main.py --config=maic --env-config=join1-v0 with test_interval=200 t_max=200 log_interval=100 test_nepisode=50 seed=0 exp_name=exp_speedup_sc_1 runner=parallel batch_size_run=25 batch_size=32 buffer_size=5000
+
+
+python3 src/main.py --config=maic --env-config=join1-v0 with test_interval=200 t_max=200 log_interval=100 test_nepisode=50 seed=2254 exp_name=exp_speedup_sc_1 runner=parallel batch_size_run=1 batch_size=32 buffer_size=5000
+
+python3 src/main.py --config=maic --env-config=join1-v0 with test_interval=200 t_max=200 log_interval=100 test_nepisode=50 seed=2254 exp_name=exp_speedup_sc_1 runner=episode batch_size_run=1 batch_size=32 buffer_size=5000
+

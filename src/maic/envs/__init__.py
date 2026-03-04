@@ -7,10 +7,8 @@ import lbforaging as lbf
 # non-gymnasium envs
 from .multiagentenvwrapper import MultiAgentEnvWrapper
 from .join1 import Join1Env
-
-# from .lbforaging.foraging_wrapper import ForagingEnvWrapper
-# from .qplex_smac.smac.env.lbforaging import register_envs as register_foraging
-
+from .lbforaging.foraging_wrapper import ForagingEnvWrapper
+from .qplex_smac.smac.env.lbforaging import register_envs as register_foraging
 
 # gymnasium envs
 from .join1_g import register_env as register_join1_g
@@ -21,18 +19,25 @@ def env_fn(env, **kwargs):
 
 
 REGISTRY = {
-    # "foraging": partial(env_fn, env=ForagingEnvWrapper),
+    "foraging": partial(env_fn, env=ForagingEnvWrapper),
     "join1": partial(env_fn, env=Join1Env),
 }
 
 
-def register_envs():
+def register_envs(env: str):
+    """
+    env: str - name of the environment as specified in its .yaml config file
+    """
     register_join1_g()
-    lbf.register_envs()
 
-    # not using the grid obs for now, but may experiment with it later
-    # lbf.register_grid_envs()
-    # register_foraging()
+    match env:
+        case "foraging":
+            register_foraging()
+
+        case "foraging-v2":
+            lbf.register_envs()
+            # not using the grid obs for now, but may experiment with it later
+            # lbf.register_grid_envs()
 
 
 def get_env_id(env: str, env_args: dict):
@@ -41,7 +46,9 @@ def get_env_id(env: str, env_args: dict):
     env: str - name of the environment as specified in its .yaml config file
     """
     match env:
-        case "foraging":
+        # the original foraging env handles env id in its wrapper class
+
+        case "foraging-v2":
             id_args = {
                 "s": env_args["field_size"],
                 "p": env_args["players"],

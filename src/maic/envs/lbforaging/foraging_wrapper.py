@@ -27,6 +27,7 @@ class ForagingEnvWrapper(MultiAgentEnvWrapper):
         sight: int,
         is_print: bool = False,
         seed: int = 0,
+        max_episode_steps: int = 50,
         need_render: bool = False,
         render_output_path: str = "",
     ):
@@ -38,7 +39,7 @@ class ForagingEnvWrapper(MultiAgentEnvWrapper):
         self.need_render = need_render
         np.random.seed(seed)
 
-        self.episode_limit = 50
+        self.episode_limit = max_episode_steps
 
         self.agent_score = np.zeros(players)
 

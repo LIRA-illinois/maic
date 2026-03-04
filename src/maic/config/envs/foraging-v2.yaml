@@ -1,4 +1,4 @@
-env: foraging
+env: foraging-v2
 
 env_args:
   field_size: 10
@@ -11,10 +11,9 @@ env_args:
   penalty: False
 
 
-
-learner_log_interval: 1000
-log_interval: 1000
-runner_log_interval: 1000
+learner_log_interval: 10000
+log_interval: 10000
+runner_log_interval: 10000
 t_max: 2050000
 test_interval: 10000
 test_nepisode: 40

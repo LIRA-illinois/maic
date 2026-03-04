@@ -6,9 +6,10 @@ env_args:
   max_food: 2
   force_coop: False
   sight: 2
-  need_render: False
   partially_observe: True
+  max_episode_steps: 50
   is_print: False
+  need_render: False
 
 
 learner_log_interval: 10000
