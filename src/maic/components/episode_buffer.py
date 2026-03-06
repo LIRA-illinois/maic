@@ -126,9 +126,12 @@ class EpisodeBatch:
             else:
                 raise KeyError("{} not found in transition or episode data".format(k))
 
-            ######################
-            # """
             dtype = self.scheme[k].get("dtype", th.float32)
+
+            # going from lists to tensors is slow, so convert to np array then to tensor
+            if isinstance(v, list):
+                if isinstance(v, list):
+                    v = np.array(v)
 
             # this operation on its own can be kinda slow
             v = th.tensor(v, dtype=dtype, device=self.device)
@@ -142,9 +145,10 @@ class EpisodeBatch:
                 for transform in self.preprocess[k][1]:
                     v = transform.transform(v)
                 target[new_k][_slices] = v.view_as(target[new_k][_slices])
-            # """
-            ######################
+
             """
+            initial attempt to speed up the update() method
+
             # doing torch.from_numpy is very fast compared to torch.tensor since it uses the same memory instead of creating a new object at a different location in memory
             # should also try to avoid doing lists of lists to torch tensors, instead convert to a stacked np array first then do torch.from_numpy
             if isinstance(v, (list, np.ndarray)):
@@ -156,6 +160,8 @@ class EpisodeBatch:
                 # it's already a torch tensor, no need to update
                 v_tensor = v
 
+            # for some reason at this point there are tensors on separate devices (GPU and CPU) and that causes an error
+
             # there's no need to add v to the device since that happens anyways when you do target[k][_slices] = ...
             self._check_safe_view(v_tensor, target[k][_slices])
             target[k][_slices] = v_tensor.view_as(target[k][_slices])
@@ -166,7 +172,7 @@ class EpisodeBatch:
                 for transform in self.preprocess[k][1]:
                     v_tensor = transform.transform(v_tensor)
                 target[new_k][_slices] = v_tensor.view_as(target[new_k][_slices])
-            """
+            # """
             ######################
 
     def _check_safe_view(self, v, dest):
