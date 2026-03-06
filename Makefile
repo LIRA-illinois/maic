@@ -18,5 +18,8 @@ list_screen_experiments:
 list_screen_experiments_quit:
 	screen -ls | grep "exp" | awk "{print $1}" | cut -d"	" -f 2 | sed 's/^/screen -X -S /; s/$$/ quit/' > screen_cmds.txt
 	code screen_cmds.txt
-	sleep 0.1
+	sleep 0.25
 	rm -r screen_cmds.txt
+
+make run-experiment:
+	bash src/experiments/run_experiment.bash -e ${e}
