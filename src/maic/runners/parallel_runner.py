@@ -48,8 +48,7 @@ class ParallelRunner(Runner):
         self.set_env_seed()
 
     def set_env_seed(self):
-        for i, parent_conn in enumerate(self.parent_conns):
-            print(i)
+        for parent_conn in self.parent_conns:
             parent_conn.send(("set_env_seed", None))
 
     def get_env_info(self):
