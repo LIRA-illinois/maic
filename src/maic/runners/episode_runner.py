@@ -57,6 +57,7 @@ class EpisodeRunner(Runner):
                 "avail_actions": [get_avail_actions(self.env)],
                 "obs": get_obs(self.env),
             }
+
             self.batch.update(pre_transition_data, ts=self.t)
 
             # Pass the entire batch of experiences up till now to the agents
@@ -67,6 +68,7 @@ class EpisodeRunner(Runner):
 
             # following the format from the parallel episode runner
             actions = actions.cpu().numpy()
+
             _, reward, terminated, truncated, env_info = step(actions, env=self.env)
 
             episode_return += reward
@@ -76,15 +78,15 @@ class EpisodeRunner(Runner):
                 "reward": [(reward,)],
                 "terminated": [(terminated != env_info.get("episode_limit", False),)],
             }
-
+            _
             self.batch.update(post_transition_data, ts=self.t)
 
             self.t += 1
 
         last_data = {
-            "state": get_state(self.env),
-            "avail_actions": [get_avail_actions(self.env)],
-            "obs": get_obs(self.env),
+                "state": get_state(self.env),
+                "avail_actions": [get_avail_actions(self.env)],
+                "obs": get_obs(self.env),
         }
 
         self.batch.update(last_data, ts=self.t)
@@ -93,6 +95,7 @@ class EpisodeRunner(Runner):
         actions = self.mac.select_actions(
             self.batch, t_ep=self.t, t_env=self.t_env, test_mode=test_mode
         )
+        actions = actions.cpu().numpy()
         self.batch.update({"actions": actions}, ts=self.t)
 
         cur_stats = self.test_stats if test_mode else self.train_stats

@@ -255,16 +255,12 @@ def env_worker(remote, process_idx: int, env: gym.Env, seed: int):
                 terminated = terminated or truncated
 
                 # Return the observations, avail_actions and state to make the next action
-                state = get_state(env)
-                avail_actions = get_avail_actions(env)
-                obs = get_obs(env)
-
                 remote.send(
                     {
                         # Data for the next timestep needed to pick an action
-                        "state": state,
-                        "avail_actions": avail_actions,
-                        "obs": obs,
+                        "state": get_state(env),
+                        "avail_actions": get_avail_actions(env),
+                        "obs": get_obs(env),
                         # Rest of the data for the current timestep
                         "reward": reward,
                         "terminated": terminated,
@@ -279,13 +275,15 @@ def env_worker(remote, process_idx: int, env: gym.Env, seed: int):
             case "reset":
                 # print("resetting env")
                 env.reset()
-                # state = get_state(env)
+                state = get_state(env)
+                avail_actions = get_avail_actions(env)
+                obs = get_obs(env)
 
                 remote.send(
                     {
-                        "state": get_state(env),
-                        "avail_actions": get_avail_actions(env),
-                        "obs": get_obs(env),
+                        "state": state,
+                        "avail_actions": avail_actions,
+                        "obs": obs,
                     }
                 )
 
