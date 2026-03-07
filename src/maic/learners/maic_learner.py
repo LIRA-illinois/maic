@@ -1,3 +1,4 @@
+from typing import Literal
 import copy
 import torch as th
 from torch.optim import RMSprop
@@ -187,12 +188,19 @@ class MAICLearner:
             self.target_mixer.load_state_dict(self.mixer.state_dict())
         self.logger.console_logger.info("Updated target network")
 
-    def cuda(self):
-        self.mac.cuda()
-        self.target_mac.cuda()
+    def to(self, device: int | Literal["cuda"]):
+        self.mac.to(device)
+        self.target_mac.to(device)
         if self.mixer is not None:
-            self.mixer.cuda()
-            self.target_mixer.cuda()
+            self.mixer.to(device)
+            self.target_mixer.to(device)
+
+    # def cuda(self):
+    #     self.mac.cuda()
+    #     self.target_mac.cuda()
+    #     if self.mixer is not None:
+    #         self.mixer.cuda()
+    #         self.target_mixer.cuda()
 
     def save_models(self, path):
         self.mac.save_models(path)

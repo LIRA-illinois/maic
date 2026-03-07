@@ -1,3 +1,4 @@
+from typing import Literal
 import torch as th
 
 from maic.modules.agents import REGISTRY as agent_REGISTRY
@@ -63,8 +64,11 @@ class BasicMAC:
     def load_state(self, other_mac):
         self.agent.load_state_dict(other_mac.agent.state_dict())
 
-    def cuda(self):
-        self.agent.cuda()
+    def to(self, device: int | Literal["cuda"]):
+        self.agent.to(device)
+
+    # def cuda(self):
+    #     self.agent.cuda()
 
     def save_models(self, path):
         th.save(self.agent.state_dict(), "{}/agent.th".format(path))

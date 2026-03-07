@@ -128,13 +128,20 @@ class EpisodeBatch:
 
             dtype = self.scheme[k].get("dtype", th.float32)
 
-            # going from lists to tensors is slow, so convert to np array then to tensor
-            if isinstance(v, list):
-                if isinstance(v, list):
+            # some inputs are already tensors, so ensure device and dtype are correct
+            if isinstance(v, th.Tensor):
+                if v.device != self.device:
+                    v = v.to(device=self.device)
+                if v.type != dtype:
+                    v = v.to(dtype=dtype)
+
+            else:
+                # going from lists or tuples to tensors directly is slow, so convert to np array then to tensor
+                if isinstance(v, (list, tuple)):
                     v = np.array(v)
 
-            # this operation on its own can be kinda slow
-            v = th.tensor(v, dtype=dtype, device=self.device)
+                # this operation is kinda slow
+                v = th.tensor(v, dtype=dtype, device=self.device)
 
             self._check_safe_view(v, target[k][_slices])
             target[k][_slices] = v.view_as(target[k][_slices])
