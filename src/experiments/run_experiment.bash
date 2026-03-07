@@ -24,9 +24,6 @@ if [[ ${#avail_gpus[@]} -eq 0 ]] ; then
     mapfile -t avail_gpus < <( nvidia-smi --query-gpu=index --format=csv,noheader,nounits )
 fi
 
-n_gpus=${#avail_gpus[@]}
-echo "$n_gpus available GPUs with indices (${avail_gpus[@]})"
-
 # output commands to runner file
 # generic commands used for all runs
 bash_prefix="#!/bin/bash"
@@ -39,6 +36,12 @@ activate_env="source .venv/bin/activate;"
 n_scenarios=${#scenario_params[@]}
 n_rl_algs=${#rl_algs[@]}
 n_envs=${#envs[@]}
+n_gpus=${#avail_gpus[@]}
+n_seeds=${#seeds[@]}
+
+# print useful info about the experiment
+echo "Running $n_scenarios scenarios with $n_seeds seeds each, $(( $n_scenarios*$n_seeds )) total commands"
+echo "Using $n_gpus GPUs with indices (${avail_gpus[@]})"
 
 if [ $n_scenarios -eq $n_rl_algs ] && [ $n_rl_algs -eq $n_envs ]; then
     # do nothing
@@ -58,7 +61,9 @@ for ((scenario_idx = 0; scenario_idx < $n_scenarios; scenario_idx++)); do
     env=${envs[$scenario_idx]}
 
     # for GPU index just take scenario_idx mod len(avail_gpus)
+    # this is the index of the GPU in avail_gpus, so need to get its hardware index
     gpu_idx=$((scenario_idx % $n_gpus))
+    gpu_hardware_idx=${avail_gpus[$gpu_idx]}
 
     echo "# ${scenario_name}" >> $run_path
     python_cmd_prefix="python3 src/main.py"
@@ -71,7 +76,7 @@ for ((scenario_idx = 0; scenario_idx < $n_scenarios; scenario_idx++)); do
         cmd="
         $screen_cmd $screen_name\
         bash -c '$activate_env $python_cmd_prefix --config=$rl_alg --env-config=$env\
-        with $same_params $scenario_param seed=$seed device_idx=$gpu_idx exp_name=$exp_scen_str'\
+        with $same_params $scenario_param seed=$seed device_idx=$gpu_hardware_idx exp_name=$exp_scen_str'\
         "
 
         echo $cmd >> $run_path
