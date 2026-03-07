@@ -162,19 +162,23 @@ class Join1Env(gym.Env):
 
     def get_state(self) -> NDArray:
         """Returns the global state."""
-        return self.state
+        # return deepcopy so changing self.state in step()
+        # will not affect the returned state in the runner's pre_transition_data
+        return self.state.copy()
 
     def get_state_size(self) -> int:
         """Returns the size of the global state."""
         return self.n_agents
 
-    def get_avail_actions(self) -> list[list[int]]:
-        """Returns the available actions of all agents in a list."""
-        return [self.get_avail_agent_actions(i) for i in range(self.n_agents)]
+    def get_avail_actions(self) -> tuple:
+        """Returns the available actions of all agents."""
+        avail_actions = [self.get_avail_agent_actions(i) for i in range(self.n_agents)]
+        return tuple(avail_actions)
 
-    def get_avail_agent_actions(self, agent_id) -> list[int]:
+    def get_avail_agent_actions(self, agent_id) -> tuple[int, ...]:
         """Returns the available actions for agent_id."""
-        return [1] * self.n_actions
+        avail_actions = [1] * self.n_actions
+        return tuple(avail_actions)
 
     def get_total_actions(self) -> int:
         """Returns the size of a single agent's action space"""
