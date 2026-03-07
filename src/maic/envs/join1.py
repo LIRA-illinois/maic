@@ -146,7 +146,7 @@ class Join1Env(MultiAgentEnvWrapper):
 
     def get_state(self):
         """Returns the global state."""
-        return self.state_n
+        return self.state_n.copy()
 
     def get_state_size(self):
         """Returns the size of the global state."""
