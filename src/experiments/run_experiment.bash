@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # get the experiment config parsing the -e arg
-while getopts e:g: option
+while getopts e: option
 do
     case "${option}"
         in
@@ -40,8 +40,9 @@ n_gpus=${#avail_gpus[@]}
 n_seeds=${#seeds[@]}
 
 # print useful info about the experiment
-echo "Running $n_scenarios scenarios with $n_seeds seeds each, $(( $n_scenarios*$n_seeds )) total commands"
+echo "Running $n_scenarios scenarios, $n_seeds seeds per scenario, $(( $n_scenarios*$n_seeds )) total commands"
 echo "Using $n_gpus GPUs with indices (${avail_gpus[@]})"
+echo -e "Writing experiment commands to $run_path"
 
 if [ $n_scenarios -eq $n_rl_algs ] && [ $n_rl_algs -eq $n_envs ]; then
     # do nothing
@@ -51,6 +52,14 @@ else
     exit
 fi
 
+# print experiment summary in a markdown-formatted table
+echo -e "\nExperiment summary\n"
+
+header_1="| Scenario Name | Alg | Env | Params |"
+header_2="| ----| ---- | ---- | ---- |"
+echo $header_1
+echo $header_2
+
 # loop over scenarios to generate 1 command per scenario
 for ((scenario_idx = 0; scenario_idx < $n_scenarios; scenario_idx++)); do
     scenario_name=sc_$((scenario_idx+1))
@@ -59,6 +68,10 @@ for ((scenario_idx = 0; scenario_idx < $n_scenarios; scenario_idx++)); do
     scenario_param=${scenario_params[$scenario_idx]}
     rl_alg=${rl_algs[$scenario_idx]}
     env=${envs[$scenario_idx]}
+
+    # print output to table
+    table_line="| $scenario_name | $rl_alg | $env | $scenario_param | "
+    echo $table_line
 
     # for GPU index just take scenario_idx mod len(avail_gpus)
     # this is the index of the GPU in avail_gpus, so need to get its hardware index
@@ -88,7 +101,18 @@ for ((scenario_idx = 0; scenario_idx < $n_scenarios; scenario_idx++)); do
 
 done
 
-echo "Writing experiment commands to $run_path"
+echo
+
+
+# check if user wants to open runner file
+read -rp "Open runner file? (y/n) " open_now
+# get lowercase input
+open_now="${open_now,,}"
+
+if [[ "$open_now" == "y" ]]; then
+    echo "Opening in VS Code"
+    code $run_path
+fi
 
 # check if user wants to run all commands in the runner file
 read -rp "Run experiment now? (y/n) " run_now
