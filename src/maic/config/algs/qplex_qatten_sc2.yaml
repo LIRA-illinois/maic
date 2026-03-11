@@ -1,4 +1,4 @@
-# --- Qatten specific parameters ---
+# --- Algorithm-specific parameters ---
 
 # use epsilon greedy action selector
 action_selector: "epsilon_greedy"
